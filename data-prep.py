@@ -102,7 +102,7 @@ if __name__=='__main__':
         for cat in all_cats:
             with timed(cat):
                 cat_df = df[df.categories.apply(lambda x: cat in x)]
-                cat_df.to_pickle('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/by-cat/{}'.format(cat))
+                cat_df.to_pickle('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
 
 
 
