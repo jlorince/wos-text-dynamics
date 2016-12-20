@@ -188,5 +188,5 @@ if __name__ == '__main__':
 
     
     results = pool.map(process_grp,files)
-    func_partial = partial(windowed_null_measures,window=)
+    #func_partial = partial(windowed_null_measures,window=)
     null_results = pool.map()
