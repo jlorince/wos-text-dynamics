@@ -75,7 +75,7 @@ def process(year):
             cats_current = pd.read_table('P:/Projects/WoS/WoS/parsed/subjects/{}.txt.gz'.format(year),header=None,names=['uid','heading','subheading','categories'], nrows=debug)
         with timed('category formatting',year=year):
             #cats_current = pd.concat([cats_current[['uid','heading','subheading']],cats_current['categories'].apply(gen_series)],axis=1)
-            cats_current['categories'] = cats_current['categories'].split('|')
+            cats_current['categories'] = cats_current['categories'].apply(lambda x: x.split('|'))
         with timed('reference loading',year=year):
             refs_current = pd.read_table('P:/Projects/WoS/WoS/parsed/references/{}.txt.gz'.format(year),header=None,names=['uid','n_refs','refs','missing'],usecols=['uid','refs'], nrows=debug)
         with timed('data merging',year=year):
