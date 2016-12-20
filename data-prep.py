@@ -1,3 +1,9 @@
+"""
+
+
+
+"""
+
 import numpy as np
 import gzip,time,datetime,string,signal,sys,cPickle,codecs
 import pandas as pd
@@ -28,14 +34,14 @@ class timed(object):
         else:
             print '{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad)
 
-def gen_series(s):
-    ser = pd.Series(index=['cat{}'.format(i) for i in xrange(8)])
-    if pd.isnull(s):
-        return ser
-    else:
-        li = s.split('|')
-    ser[:len(li)] = li
-    return ser
+# def gen_series(s):
+#     ser = pd.Series(index=['cat{}'.format(i) for i in xrange(8)])
+#     if pd.isnull(s):
+#         return ser
+#     else:
+#         li = s.split('|')
+#     ser[:len(li)] = li
+#     return ser
 
 def parse_abs(rawtext_arr):
     result = []
@@ -60,7 +66,7 @@ def process(year):
             abs_current['abstract'] = parse_abs(abs_current['abstract'].values)
         with timed('keyword loading',year=year):
             #kw_current = pd.read_table('S:/UsersData_NoExpiration/jjl2228/keywords/pubs_by_year/{}.txt.gz'.format(year),header=None,names=['keyword','uid'],nrows=debug)
-            kw_current = pd.read_table(':/Projects/WoS/WoS/parsed/keywords/{}.txt.gz'.format(year),header=None,names=['uid','nk','keywords'],usecols=['uid','keywords'],nrows=debug)
+            kw_current = pd.read_table('P:/Projects/WoS/WoS/parsed/keywords/{}.txt.gz'.format(year),header=None,names=['uid','nk','keywords'],usecols=['uid','keywords'],nrows=debug)
         with timed('metadata loading',year=year):
             md_current = pd.read_table('P:/Projects/WoS/WoS/parsed/metadata/{}.txt.gz'.format(year),header=None, nrows=debug,
                                    names=["uid","date","pubtype","volume","issue","pages","paper_title","source_title","doctype"],
@@ -81,8 +87,6 @@ def process(year):
     return current
         
 if __name__=='__main__':
-
-    procs = 25
 
     temp_data_generated = int(sys.argv[1])
 
