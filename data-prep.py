@@ -106,6 +106,7 @@ if __name__=='__main__':
 
     with timed('word freq distribution'):
         termdict = {}
+        total = len(df)
 
         for i,row in enumerate(df.abstract.dropna(),1):
             for term in row.split():
@@ -117,7 +118,22 @@ if __name__=='__main__':
         global_term_counts.to_csv('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/global_term_counts.csv',encoding='utf8')
 
 
+termdict = {}
+import glob
+import pandas as pd
 
+for j,fi in enumerate(glob.glob('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/by-cat/*.pkl'),1):
+    print "{} ({}/{})".format(fi,j,251)
+    df = pd.read_pickle(fi)
+    total = len(df)
+    for i,row in enumerate(df.abstract.dropna(),1):
+        for term in row.split():
+            termdict[term] = termdict.get(term,0)+1
+        if i%100000==0: 
+            print "{}/{} ({}%)".format(i,total,100*(i/float(total)))
+
+    global_term_counts = pd.Series(termdict)
+    global_term_counts.to_csv('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/global_term_counts.csv',encoding='utf8')
 
 
 
