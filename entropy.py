@@ -164,21 +164,22 @@ if __name__ == '__main__':
         args.null_bootstrap_samples = 5
         args.thoth_mc_samples = 5
 
+    ### LOGGING SETUP
+    now = datetime.datetime.now()
+    if args.logfile:
+        args.logfiles += '_'
+    log_filename = now.strftime('{}%Y%m%d_%H%M%S.log'.format(args.logfile))
+    logFormatter = logging.Formatter("%(asctime)s\t[%(levelname)s]\t%(message)s")
+    rootLogger = logging.getLogger()
+    fileHandler = logging.FileHandler(log_filename)
+    fileHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(fileHandler)
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(consoleHandler)
+    rootLogger.setLevel(logging.INFO)
+
     with timed('full analysis'):
-        ### LOGGING SETUP
-        now = datetime.datetime.now()
-        if args.logfile:
-            args.logfiles += '_'
-        log_filename = now.strftime('{}%Y%m%d_%H%M%S.log'.format(args.logfile))
-        logFormatter = logging.Formatter("%(asctime)s\t[%(levelname)s]\t%(message)s")
-        rootLogger = logging.getLogger()
-        fileHandler = logging.FileHandler(log_filename)
-        fileHandler.setFormatter(logFormatter)
-        rootLogger.addHandler(fileHandler)
-        consoleHandler = logging.StreamHandler()
-        consoleHandler.setFormatter(logFormatter)
-        rootLogger.addHandler(consoleHandler)
-        rootLogger.setLevel(logging.INFO)
 
         with timed('vocabulary setup'):
             ### stopword setup
