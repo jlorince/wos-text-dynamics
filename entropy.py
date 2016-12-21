@@ -164,8 +164,6 @@ if __name__ == '__main__':
         args.null_bootstrap_samples = 5
         args.thoth_mc_samples = 5
 
-    logger.info(str(args))
-
     ### LOGGING SETUP
     now = datetime.datetime.now()
     if args.logfile:
@@ -181,6 +179,8 @@ if __name__ == '__main__':
     consoleHandler.setFormatter(logFormatter)
     rootLogger.addHandler(consoleHandler)
     rootLogger.setLevel(logging.INFO)
+
+    rootLogger.info(str(args))
 
     with timed('full analysis'):
 
