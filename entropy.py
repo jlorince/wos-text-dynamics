@@ -41,7 +41,7 @@ def shuffler(n1,combined,n2=None):
             div_result.append(thoth.calc_jsd(new1,new2, 0.5, args.thoth_mc_samples)[0])
         ent_result.append(thoth.calc_entropy(new1, args.thoth_mc_samples)[0])
     if n2 is None:
-        np.percentile(np.array(ent_result),[5,50,95])
+        return np.percentile(np.array(ent_result),[5,50,95])
     else:
         return np.percentile(np.array(ent_result),[5,50,95]),np.percentile(np.array(div_result),[5,50,95])
 
@@ -55,8 +55,9 @@ def windowed_null_measures(dist_tuple,window=1,side='before'):
     for i,(year,d) in enumerate(zip(xrange(1991,2016),dists)):
         with timed('null {}-->{}'.format(cat,year)):
             output[year] = {'jsd':np.array([np.nan]*3),'H':np.array([np.nan]*3)}
-            if d is not np.nan:
+            if type(d) is not float:
                 combine = d.copy()
+
                 if side in ('before','both'):
                     for idx in xrange(1,window+1):
                         rel = i-idx
@@ -82,6 +83,7 @@ def windowed_null_measures(dist_tuple,window=1,side='before'):
                     else:
                         ent = shuffler(n1=d.sum(),n2=None,combined=combine)
                         output[year]['H'] = ent
+                last = d
             else:
                 last = None
 
@@ -126,7 +128,9 @@ def process_grp(fi):
 
 def gen_dists(fi):
     cat = fi[fi.rfind('/')+1:-4]
+    dists = []
     with timed('dist generation for {}'.format(cat)):
+        df = pd.read_pickle(fi)
         for year in xrange(1991,2016):
             with timed('dists {}-->{}'.format(cat,year)):
                 year_df = df[df.year==year]
