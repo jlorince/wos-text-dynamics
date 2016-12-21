@@ -8,11 +8,8 @@ import sys,logging,time,datetime,math,argparse
 from nltk.corpus import stopwords
 from nltk.stem.snowball import EnglishStemmer
 sys.path.append('/backup/home/jared/thoth')
-#import thoth.thoth as thoth
+import thoth.thoth as thoth
 
-vocab_thresh = 100
-thoth_mc_samples = 1000
-data_dir = '/backup/home/jared/storage/wos-text-dynamics-data/'
 
 
 class timed(object):
@@ -34,12 +31,12 @@ def termcounts(abs_ser):
     arr = np.array([tc.get(k,0) for k in vocab])
     return arr
 
-def shuffler(n1,combined,nr=1000,n2=None):
+def shuffler(n1,combined,n2=None):
     #combined = np.sum(dists,0)
     probs = combined/float(combined.sum())
     div_result = []
     ent_result = []
-    for nr_idx in xrange(nr):
+    for nr_idx in xrange(args.null_bootstrap_samples):
         new1 = np.random.multinomial(n1,probs)
         if n2 is not None:
             new2 = np.random.multinomial(n2,probs)
@@ -58,41 +55,42 @@ def windowed_null_measures(dist_tuple,window=1,side='before'):
     output ={}
 
     for i,(year,d) in enumerate(zip(xrange(1991,2016),dists)):
-        output[year] = {'jsd':np.nan,'H':np.nan}
-        if d is not np.nan:
-            combine = d.copy()
-            if side in ('before','both'):
-                for idx in xrange(1,window+1):
-                    rel = i-idx
-                    if rel>=0:
-                        if dists[rel] is not np.nan:
-                            combine += dist[rel]
+        with timed('null {}-->{}'.format(cat,year)):
+            output[year] = {'jsd':np.nan,'H':np.nan}
+            if d is not np.nan:
+                combine = d.copy()
+                if side in ('before','both'):
+                    for idx in xrange(1,window+1):
+                        rel = i-idx
+                        if rel>=0:
+                            if dists[rel] is not np.nan:
+                                combine += dist[rel]
+                        else:
+                            break
+                if side in ('after','both'):
+                    for idx in xrange(1,window+1):
+                        rel = i+idx
+                        if rel<len(dists):
+                            if dists[rel] is not np.nan:
+                                combine += dist[rel]
+                        else:
+                            break
+                
+                if (combine.sum()>0) and (d.sum()>0):
+                    if last is not None:
+                        div,ent = shuffler(n1=d.sum(),n2=last.sum(),combined=combine)
+                        output[year]['jsd'] = div
+                        output[year]['H'] = ent
                     else:
-                        break
-            if side in ('after','both'):
-                for idx in xrange(1,window+1):
-                    rel = i+idx
-                    if rel<len(dists):
-                        if dists[rel] is not np.nan:
-                            combine += dist[rel]
-                    else:
-                        break
-            
-            if (combine.sum()>0) and (d.sum()>0):
-                if last is not None:
-                    div,ent = shuffler(n1=d.sum(),n2=last.sum(),combined=combine)
-                    output[year]['jsd'] = div
-                    output[year]['H'] = ent
-                else:
-                    ent = shuffler(n1=d.sum(),n2=None,combined=combine)
-                    #output[year]['jsd'] = np.nan
-                    output[year]['H'] = ent
-            # else:
-            #     output[year]['jsd'] = np.nan
-            #     output[year]['H'] = np.nan
-            last = d
-        else:
-            last = None
+                        ent = shuffler(n1=d.sum(),n2=None,combined=combine)
+                        #output[year]['jsd'] = np.nan
+                        output[year]['H'] = ent
+                # else:
+                #     output[year]['jsd'] = np.nan
+                #     output[year]['H'] = np.nan
+                last = d
+            else:
+                last = None
 
 
     return cat,output
@@ -110,24 +108,25 @@ def process_grp(fi):
         cumulative = np.zeros(len(vocab))
         #for year,year_df in df.groupby('year'):
         for year in xrange(1991,2016):
-            year_df = df[df.year==year]
-            output[year] = {'jsd':np.nan,'jsd_c':np.nan,'H':np.nan,'H__c':np.nan}
-            if len(year_df)>0:
-                current = termcounts(year_df.abstract)
-                if last is not None:
-                    output[year]['jsd'] = thoth.calc_jsd(current,last,0.5,thoth_mc_samples)
-                    output[year]['jsd_c'] = thoth.calc_jsd(current,cumulative,0.5,thoth_mc_samples)
-                if current.sum()>0:
-                    output[year]['H'] = thoth.calc_entropy(current,thoth_mc_samples)
-                    cumulative += current
-                    output[year]['H_c'] = thoth.calc_entropy(cumulative,thoth_mc_samples)
-                    last = current
-                    dists.append(current)
+            with timed('raw {}-->{}'.format(cat,year)):
+                year_df = df[df.year==year]
+                output[year] = {'jsd':np.nan,'jsd_c':np.nan,'H':np.nan,'H__c':np.nan}
+                if len(year_df)>0:
+                    current = termcounts(year_df.abstract)
+                    if last is not None:
+                        output[year]['jsd'] = thoth.calc_jsd(current,last,0.5,thoth_mc_samples)
+                        output[year]['jsd_c'] = thoth.calc_jsd(current,cumulative,0.5,thoth_mc_samples)
+                    if current.sum()>0:
+                        output[year]['H'] = thoth.calc_entropy(current,thoth_mc_samples)
+                        cumulative += current
+                        output[year]['H_c'] = thoth.calc_entropy(cumulative,thoth_mc_samples)
+                        last = current
+                        dists.append(current)
+                    else:
+                        last = None
+                        dists.append(np.nan)
                 else:
                     last = None
-                    dists.append(np.nan)
-            else:
-                last = None
 
         return cat,output,dists
 
@@ -146,7 +145,17 @@ if __name__ == '__main__':
     parser.add_argument("-o", "--output", help="output path for results",type=str,default='/backup/home/jared/storage/wos-text-dynamics-data/results/')
     parser.add_argument("-t", "--thoth_mc_samples", help="Number of monte carlo samples for thoth calculations",type=int,default=10000)
     parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=10000)
+    parser.add_argument("-d", "--datadir",help="root input data directory",default='/backup/home/jared/storage/wos-text-dynamics-data/',type=str)
+    parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
+    parser.add_argument("-x", "--debug", help="enable mode", action="store_true")
     args = parser.parse_args()
+
+    if args.debug:
+        args.null_bootstrap_samples = 100
+        args.thoth_mc_samples = 100
+        vocab_rows = 50000
+    else:
+        vocab_rows = None
 
 
     ### LOGGING SETUP
@@ -171,13 +180,13 @@ if __name__ == '__main__':
         stop = stop.union([stemmer.stem(s) for s in stop])
 
         ### vocabulary setup
-        global_term_counts = pd.Series.from_csv(data_dir+'global_term_counts.csv',encoding='utf8')
-        pruned = global_term_counts[global_term_counts>=vocab_thresh]
+        global_term_counts = pd.Series.from_csv(args.datadir+'global_term_counts.csv',encoding='utf8',row=vocab_rows)
+        pruned = global_term_counts[global_term_counts>=args.vocab_thresh]
         vocab = set([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
 
     with timed('pool setup'):
         ### file setup
-        files = glob("{}by-cat/*".format(data_dir))
+        files = glob("{}by-cat/*".format(args.datadir))
 
         ### pool setup
         chunksize = int(math.ceil(len(files) / float(args.procs)))
