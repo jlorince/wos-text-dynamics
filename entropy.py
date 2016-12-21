@@ -77,7 +77,7 @@ def windowed_null_measures(dist_tuple,window=1,side='before'):
                 
                 if (combine.sum()>0) and (d.sum()>0):
                     if last is not None:
-                        div,ent = shuffler(n1=d.sum(),n2=last.sum(),combined=combine)
+                        ent,div = shuffler(n1=d.sum(),n2=last.sum(),combined=combine)
                         output[year]['jsd'] = div
                         output[year]['H'] = ent
                     else:
