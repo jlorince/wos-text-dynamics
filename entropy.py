@@ -181,7 +181,7 @@ if __name__ == '__main__':
         if os.path.exists(vocab_path):
             vocab = [line.strip() for line in codecs.open(vocab_path,encoding='utf8')]
         else:
-            global_term_counts = pd.Series.from_csv(args.datadir+'global_term_counts.csv',encoding='utf8',nrows=vocab_rows)
+            global_term_counts = pd.Series.from_csv(args.datadir+'global_term_counts.csv',encoding='utf8')
             pruned = global_term_counts[global_term_counts>=args.vocab_thresh]
             vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
             with codecs.open(vocab_path,'w',encoding='utf8') as f:
