@@ -124,6 +124,21 @@ def process_grp(fi):
 
         return cat,output,dists
 
+def gen_dists(fi):
+    cat = fi[fi.rfind('/')+1:-4]
+    with timed('dist generation for {}'.format(cat)):
+        for year in xrange(1991,2016):
+            with timed('dists {}-->{}'.format(cat,year)):
+                year_df = df[df.year==year]
+                current = termcounts(year_df.abstract)
+                if current.sum()>0:
+                    dists.append(current)
+                else:
+                    dists.append(np.nan)
+    return cat,dists
+
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser("Script for calculating information theoretic of text evolution among WoS abstracts")
@@ -199,8 +214,12 @@ if __name__ == '__main__':
                 for cat,output,dists in results:
                     all_dists.append((cat,dists))
                     for year in output:
-                        fout.write('\t'.join([cat,str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('n','jsd','jsd_c','H','H_c')])+'\n')
-                        
+                        fout.write('\t'.join([cat,str(year),str(output[year]['n'])]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','jsd_c','H','H_c')])+'\n')
+    else:
+        ### just generate dists, assuming we've already done our other computations
+        with timed('parallel dist generation'):
+            all_dists = pool.map(gen_dists,files) 
+                                
 
     if args.null:
         with timed('parallel processing, null model'):
