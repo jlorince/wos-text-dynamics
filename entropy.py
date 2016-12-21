@@ -3,12 +3,12 @@ import pandas as pd
 import numpy as np
 from glob import glob
 from collections import Counter
-from functools import parial
+from functools import partial
 import sys,logging,time,datetime,math,argparse
 from nltk.corpus import stopwords
 from nltk.stem.snowball import EnglishStemmer
 sys.path.append('/backup/home/jared/thoth')
-import thoth.thoth as thoth
+#import thoth.thoth as thoth
 
 vocab_thresh = 100
 thoth_mc_samples = 1000
@@ -54,9 +54,9 @@ def shuffler(n1,combined,nr=1000,n2=None):
 # side: string, 'before','after', or 'both'
 def windowed_null_measures(dists,window=1,side='before'):
     last = None
-    result ={}
+    output ={}
 
-    for i,(year,d) in enumerate(zip(dists,xrange(1991,2016))):
+    for i,(year,d) in enumerate(zip(xrange(1991,2016),dists)):
         combine = d.copy()
         if side in ('before','both'):
             for idx in xrange(1,window+1):
@@ -74,49 +74,55 @@ def windowed_null_measures(dists,window=1,side='before'):
                         combine += dist[rel]
                 else:
                     break
-        result[year] = {}
+        output[year] = {}
         if (combine.sum()>0) and (d.sum()>0):
             if last is not None:
                 div,ent = shuffler(n1=d.sum(),n2=last.sum(),combined=combine)
-                result[year]['jsd'] = div
-                result[year]['H'] = ent
+                output[year]['jsd'] = div
+                output[year]['H'] = ent
             else:
                 ent = shuffler(n1=d.sum(),n2=None,combined=combine)
-                result[year]['jsd'] = np.nan
-                result[year]['H'] = ent
+                output[year]['jsd'] = np.nan
+                output[year]['H'] = ent
         else:
-            result[year]['jsd'] = np.nan
-            result[year]['H'] = np.nan
+            output[year]['jsd'] = np.nan
+            output[year]['H'] = np.nan
+
+    return output
 
 
 
 def process_grp(fi):
-    with timed('base calculations for {}'.format(fi[fi.rfind('/')+1:])):
+    cat = fi[fi.rfind('/')+1:]
+    with timed('base calculations for {}'.format(cat)):
         df = pd.read_pickle(fi)
         # calculate raw entropy and divergence measures by year
         output = {}
-        all_dists = []
+        dists = []
         last = None
         cumulative = np.zeros(len(vocab))
-        for year,year_df in df.groupby('year'):
-            output[year] = {}
-            current = termcounts(year_df.abstract)
-            if last is not None:
-                output[year]['jsd'] = thoth.calc_jsd(current,last,0.5,thoth_mc_samples)
-                output[year]['jsd_c'] = thoth.calc_jsd(current,cumulative,0.5,thoth_mc_samples)
-                break
-            else:
-                output[year]['jsd'] = np.nan
-                output[year]['jsd_c'] = np.nan
-            if current.sum()>0:
-                output[year]['H'] = thoth.calc_entropy(current,thoth_mc_samples)
-                cumulative += current
-                last = current
-                all_dists.append(current)
+        #for year,year_df in df.groupby('year'):
+        for year in xrange(1991,2016):
+            year_df = df[df.year==year]
+            output[year] = {'jsd':np.nan,'jsd_c':np.nan,'H':np.nan,'H__c':np.nan}
+            if len(year_df)>0:
+                current = termcounts(year_df.abstract)
+                if last is not None:
+                    output[year]['jsd'] = thoth.calc_jsd(current,last,0.5,thoth_mc_samples)
+                    output[year]['jsd_c'] = thoth.calc_jsd(current,cumulative,0.5,thoth_mc_samples)
+                if current.sum()>0:
+                    output[year]['H'] = thoth.calc_entropy(current,thoth_mc_samples)
+                    cumulative += current
+                    output[year]['H_c'] = thoth.calc_entropy(cumulative,thoth_mc_samples)
+                    last = current
+                    dists.append(current)
+                else:
+                    last = None
+                    dists.append(np.nan)
             else:
                 last = None
-                output[year]['H'] = np.nan
-                all_dists.append(np.nan)
+
+        return cat,output,dists
 
 
 
@@ -124,41 +130,23 @@ def process_grp(fi):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser("Script for calculating information theoretic of text evolution among WoS abstracts")
-    parser.add_argument("-p", "--procs",help="specify number of processes for parallel computations",default=mp.cpu_count(),type=str)
+    parser.add_argument("-p", "--procs",help="specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=str)
     parser.add_argument("-r", "--raw", help="calculate raw entropy/divergence measures",action="store_true")
-    parser.add_argument("-p", "--preprocess", help="perform preprocessing of listening histories",action="store_true")
-    parser.add_argument("-r", "--rawtext",help="Load scrobbles from raw text files. If not specififed, assumes files are already pickled and saved in `pickledir`",action="store_true")
-    parser.add_argument("-s","--save",help='save newly generated DFs',action="store_true")
-    parser.add_argument("--pickledir", help="specify output dir for pickled dataframes",default='/home/jlorince/scrobbles_processed/')
-    parser.add_argument("--datadir", help="specify base directory containing input files",default='/home/jlorince/scrobbles/')
-    parser.add_argument("--suppdir", help="specify supplementary data location",default='/home/jlorince/support/')
-    parser.add_argument("--resultdir", help="specify results location",default='/home/jlorince/results/')
-    parser.add_argument("--session_thresh", help="session segmentation threshold. Use 0 for no time-based segmentation.",type=int,default=None) # 1800
-    parser.add_argument("--min_patch_length", help="minimum patch length",type=int,default=None) # 5
-    parser.add_argument("--dist_thresh", help="distance threshold defining patch neigborhood",type=float,default=None) # 0.2
-    parser.add_argument("-n", help="number of processes in processor pool",type=int,default=1)
-    parser.add_argument("--feature_path", help="path to artist feature matrix",default=None) # '/home/jlorince/lda_tests_artists/features_190.numpy'
-    parser.add_argument("--distance_metric", help="distance metric",type=str,default='cosine')
-    parser.add_argument("--patch_basis", help="If specified, perform patch summaries with the given basis",type=str,choices=['block','patch_idx_shuffle','patch_index_simple'])
-    parser.add_argument("--skip_complete", help="If specified, check for existing files and skip if they exist",action='store_true')
-    parser.add_argument("--prefix_input", help="inpout file prefix",type=str,default='')
-    parser.add_argument("--prefix_output", help="output file prefix",type=str,default='')
-    #parser.add_argument("--patch_len_dist", help="compute distribution of patch lengths",default=None,type=str,choices=['shuffle','simple','block','both'])
-    parser.add_argument("--patch_len_dist", help="compute distribution of patch lengths",action='store_true')
-    parser.add_argument("--blockdists", help="",action='store_true')
-    parser.add_argument("--blockgaps", help="",action='store_true')
-    parser.add_argument("--scrobblegaps", help="",action='store_true')
-    parser.add_argument("--ee_artists",help="",action='store_true')
-    parser.add_argument("--ee_artists_2",help="",action='store_true')
-    parser.add_argument("--ee_artists_dists",help="",action='store_true')
-    parser.add_argument("--block_len_dists",help="",action='store_true')
-
+    parser.add_argument("-n", "--null", help="calculate null model entropy/divergence measures",action="store_true")
+    parser.add_argument("-w", "--window", help="window size for null model calculations",type=int,default=1)
+    parser.add_argument("-s", "--side", help="which sides of current year in which to extend window for null model calculations",type=str,default='before',choices=['before','after','both'])
+    parser.add_argument("-l", "--logfile", help="prefix for logfile",type=str,default='')
+    parser.add_argument("-o", "--output", help="output path for results",type=str,default='/backup/home/jared/storage/wos-text-dynamics-data/results/')
+    parser.add_argument("-t", "--thoth_mc_samples", help="Number of monte carlo samples for thoth calculations",type=int,default=10000)
+    parser.add_argument("-n", "--null_model_samples", help="Number of monte carlo samples for null model calculations",type=int,default=10000)
     args = parser.parse_args()
 
 
     ### LOGGING SETUP
     now = datetime.datetime.now()
-    log_filename = now.strftime('setup_%Y%m%d_%H%M%S.log')
+    if args.logfile:
+        args.logfiles += '_'
+    log_filename = now.strftime('{}%Y%m%d_%H%M%S.log'.format(args.logfile))
     logFormatter = logging.Formatter("%(asctime)s\t[%(levelname)s]\t%(message)s")
     rootLogger = logging.getLogger()
     fileHandler = logging.FileHandler(log_filename)
@@ -186,7 +174,17 @@ if __name__ == '__main__':
     chunksize = int(math.ceil(len(files) / float(procs)))
     pool = mp.Pool(procs)
 
-    
-    results = pool.map(process_grp,files)
-    #func_partial = partial(windowed_null_measures,window=)
-    null_results = pool.map()
+    if args.raw:
+        with timed('parallel processing, raw measures'):
+            results = pool.map(process_grp,files)
+        with timed('writing results, raw measures')
+            all_dists = []
+            with open(args.output,'w') as fout:
+                for cat,output,dists in results:
+                    all_dists.append(dists)
+                    for year in output:
+
+    if args.null:
+        with timed('parallel processing, null model'):
+            func_partial = partial(windowed_null_measures,window=args.window,side=args.side)
+            null_results = pool.map(func_partial,files)
