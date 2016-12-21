@@ -145,7 +145,7 @@ if __name__ == '__main__':
     parser.add_argument("-l", "--logfile", help="prefix for logfile",type=str,default='')
     parser.add_argument("-o", "--output", help="output path for results",type=str,default='/backup/home/jared/storage/wos-text-dynamics-data/results/')
     parser.add_argument("-t", "--thoth_mc_samples", help="Number of monte carlo samples for thoth calculations",type=int,default=10000)
-    parser.add_argument("-n", "--null_model_samples", help="Number of monte carlo samples for null model calculations",type=int,default=10000)
+    parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=10000)
     args = parser.parse_args()
 
 
