@@ -164,73 +164,73 @@ if __name__ == '__main__':
         args.null_bootstrap_samples = 5
         args.thoth_mc_samples = 5
 
+    with timed('full analysis'):
+        ### LOGGING SETUP
+        now = datetime.datetime.now()
+        if args.logfile:
+            args.logfiles += '_'
+        log_filename = now.strftime('{}%Y%m%d_%H%M%S.log'.format(args.logfile))
+        logFormatter = logging.Formatter("%(asctime)s\t[%(levelname)s]\t%(message)s")
+        rootLogger = logging.getLogger()
+        fileHandler = logging.FileHandler(log_filename)
+        fileHandler.setFormatter(logFormatter)
+        rootLogger.addHandler(fileHandler)
+        consoleHandler = logging.StreamHandler()
+        consoleHandler.setFormatter(logFormatter)
+        rootLogger.addHandler(consoleHandler)
+        rootLogger.setLevel(logging.INFO)
 
-    ### LOGGING SETUP
-    now = datetime.datetime.now()
-    if args.logfile:
-        args.logfiles += '_'
-    log_filename = now.strftime('{}%Y%m%d_%H%M%S.log'.format(args.logfile))
-    logFormatter = logging.Formatter("%(asctime)s\t[%(levelname)s]\t%(message)s")
-    rootLogger = logging.getLogger()
-    fileHandler = logging.FileHandler(log_filename)
-    fileHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(fileHandler)
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(consoleHandler)
-    rootLogger.setLevel(logging.INFO)
+        with timed('vocabulary setup'):
+            ### stopword setup
+            stop = set(stopwords.words('english'))
+            stemmer = EnglishStemmer()
+            stop = stop.union([stemmer.stem(s) for s in stop])
 
-    with timed('vocabulary setup'):
-        ### stopword setup
-        stop = set(stopwords.words('english'))
-        stemmer = EnglishStemmer()
-        stop = stop.union([stemmer.stem(s) for s in stop])
+            ### vocabulary setup
+            vocab_path = args.datadir+'vocab_pruned_{}'.format(args.vocab_thresh)
+            if os.path.exists(vocab_path):
+                with timed('Loading existing vocab file'):
+                    vocab = [line.strip() for line in codecs.open(vocab_path,encoding='utf8')]
+            else:
+                with timed('generating new vocab file with thresh={}'.format(args.vocab_thresh)):
+                    global_term_counts = pd.Series.from_csv(args.datadir+'global_term_counts.csv',encoding='utf8')
+                    pruned = global_term_counts[global_term_counts>=args.vocab_thresh]
+                    vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
+                    with codecs.open(vocab_path,'w',encoding='utf8') as f:
+                        f.write('\n'.join(vocab))
 
-        ### vocabulary setup
-        vocab_path = args.datadir+'vocab_pruned_{}'.format(args.vocab_thresh)
-        if os.path.exists(vocab_path):
-            with timed('Loading existing vocab file'):
-                vocab = [line.strip() for line in codecs.open(vocab_path,encoding='utf8')]
-        else:
-            with timed('generating new vocab file with thresh={}'.format(args.vocab_thresh)):
-                global_term_counts = pd.Series.from_csv(args.datadir+'global_term_counts.csv',encoding='utf8')
-                pruned = global_term_counts[global_term_counts>=args.vocab_thresh]
-                vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
-                with codecs.open(vocab_path,'w',encoding='utf8') as f:
-                    f.write('\n'.join(vocab))
+        with timed('pool setup'):
+            ### file setup
+            files = glob("{}by-cat/*".format(args.datadir))
+            if args.debug:
+                files = files[:3]
 
-    with timed('pool setup'):
-        ### file setup
-        files = glob("{}by-cat/*".format(args.datadir))
-        if args.debug:
-            files = files[:3]
+            ### pool setup
+            chunksize = int(math.ceil(len(files) / float(args.procs)))
+            pool = mp.Pool(args.procs)
 
-        ### pool setup
-        chunksize = int(math.ceil(len(files) / float(args.procs)))
-        pool = mp.Pool(args.procs)
-
-    if args.raw:
-        with timed('parallel processing, raw measures'):
-            results = pool.map(process_grp,files)
-        with timed('writing results, raw measures'):
-            all_dists = []
-            with open(args.output+'raw_results','w') as fout:
-                for cat,output,dists in results:
-                    all_dists.append((cat,dists))
-                    for year in output:
-                        fout.write('\t'.join([cat,str(year),str(output[year]['n'])]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','jsd_c','H','H_c')])+'\n')
-    else:
-        ### just generate dists, assuming we've already done our other computations
-        with timed('parallel dist generation'):
-            all_dists = pool.map(gen_dists,files) 
-                                
-
-    if args.null:
-        with timed('parallel processing, null model'):
-            func_partial = partial(windowed_null_measures,window=args.window,side=args.side)
-            null_results = pool.map(func_partial,all_dists)
-            with timed('writing results, null models'):
-                with open(args.output+'null_results','w') as fout:
-                    for cat,output in null_results:
+        if args.raw:
+            with timed('parallel processing, raw measures'):
+                results = pool.map(process_grp,files)
+            with timed('writing results, raw measures'):
+                all_dists = []
+                with open(args.output+'raw_results','w') as fout:
+                    for cat,output,dists in results:
+                        all_dists.append((cat,dists))
                         for year in output:
-                            fout.write('\t'.join([cat,str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
+                            fout.write('\t'.join([cat,str(year),str(output[year]['n'])]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','jsd_c','H','H_c')])+'\n')
+        else:
+            ### just generate dists, assuming we've already done our other computations
+            with timed('parallel dist generation'):
+                all_dists = pool.map(gen_dists,files) 
+                                    
+
+        if args.null:
+            with timed('parallel processing, null model'):
+                func_partial = partial(windowed_null_measures,window=args.window,side=args.side)
+                null_results = pool.map(func_partial,all_dists)
+                with timed('writing results, null models'):
+                    with open(args.output+'null_results_{}_{}'.format(args.window,args.side),'w') as fout:
+                        for cat,output in null_results:
+                            for year in output:
+                                fout.write('\t'.join([cat,str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
