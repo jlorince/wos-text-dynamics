@@ -162,7 +162,7 @@ if __name__ == '__main__':
     consoleHandler = logging.StreamHandler()
     consoleHandler.setFormatter(logFormatter)
     rootLogger.addHandler(consoleHandler)
-    rootLogger.setLevel(logging_level)
+    rootLogger.setLevel(logging.INFO)
 
     ### stopword setup
     stop = set(stopwords.words('english'))
