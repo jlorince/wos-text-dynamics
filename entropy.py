@@ -4,7 +4,7 @@ import numpy as np
 from glob import glob
 from collections import Counter
 from functools import partial
-import sys,logging,time,datetime,math,argparse
+import sys,logging,time,datetime,math,argparse,os
 from nltk.corpus import stopwords
 from nltk.stem.snowball import EnglishStemmer
 sys.path.append('/backup/home/jared/thoth')
@@ -153,9 +153,6 @@ if __name__ == '__main__':
     if args.debug:
         args.null_bootstrap_samples = 100
         args.thoth_mc_samples = 100
-        vocab_rows = 50000
-    else:
-        vocab_rows = None
 
 
     ### LOGGING SETUP
@@ -180,9 +177,15 @@ if __name__ == '__main__':
         stop = stop.union([stemmer.stem(s) for s in stop])
 
         ### vocabulary setup
-        global_term_counts = pd.Series.from_csv(args.datadir+'global_term_counts.csv',encoding='utf8',nrows=vocab_rows)
-        pruned = global_term_counts[global_term_counts>=args.vocab_thresh]
-        vocab = set([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
+        vocab_path = args.datadir+'vocab_pruned_{}'.format(args.vocab_thresh)
+        if os.path.exists(vocab_path):
+            vocab = [line.strip() for line in codecs.open(vocab_path,encoding='utf8')]
+        else:
+            global_term_counts = pd.Series.from_csv(args.datadir+'global_term_counts.csv',encoding='utf8',nrows=vocab_rows)
+            pruned = global_term_counts[global_term_counts>=args.vocab_thresh]
+            vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
+            with codecs.open(vocab_path,'w',encoding='utf8') as f:
+                f.write('\n'.join(vocab))
 
     with timed('pool setup'):
         ### file setup
