@@ -228,6 +228,15 @@ if __name__ == '__main__':
                                     
 
         if args.null:
+            with timed('parallel processing, null model (window={}, side={})'.format(1,'before')):
+                func_partial = partial(windowed_null_measures,window=1,side='before')
+                null_results = pool.map(func_partial,all_dists)
+                with timed('writing results, null models'):
+                    with open(args.output+'null_results_{}_{}'.format(args.window,args.side),'w') as fout:
+                        for cat,output in null_results:
+                            for year in output:
+                                fout.write('\t'.join([cat,str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
+
             for window in (1,2,3,4,5,25):
                 with timed('parallel processing, null model (window={}, side={})'.format(window,'both')):
                     #func_partial = partial(windowed_null_measures,window=args.window,side=args.side)
