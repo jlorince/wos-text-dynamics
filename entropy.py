@@ -52,43 +52,50 @@ def shuffler(n1,combined,nr=1000,n2=None):
 
 # window: integer, number of years before and/or after current year
 # side: string, 'before','after', or 'both'
-def windowed_null_measures(dists,window=1,side='before'):
+def windowed_null_measures(dist_tuple,window=1,side='before'):
+    cat,all_dists = dist_tuple
     last = None
     output ={}
 
     for i,(year,d) in enumerate(zip(xrange(1991,2016),dists)):
-        combine = d.copy()
-        if side in ('before','both'):
-            for idx in xrange(1,window+1):
-                rel = i-idx
-                if rel>=0:
-                    if dists[rel] is not np.nan:
-                        combine += dist[rel]
+        output[year] = {'jsd':np.nan,'H':np.nan}
+        if d is not np.nan:
+            combine = d.copy()
+            if side in ('before','both'):
+                for idx in xrange(1,window+1):
+                    rel = i-idx
+                    if rel>=0:
+                        if dists[rel] is not np.nan:
+                            combine += dist[rel]
+                    else:
+                        break
+            if side in ('after','both'):
+                for idx in xrange(1,window+1):
+                    rel = i+idx
+                    if rel<len(dists):
+                        if dists[rel] is not np.nan:
+                            combine += dist[rel]
+                    else:
+                        break
+            
+            if (combine.sum()>0) and (d.sum()>0):
+                if last is not None:
+                    div,ent = shuffler(n1=d.sum(),n2=last.sum(),combined=combine)
+                    output[year]['jsd'] = div
+                    output[year]['H'] = ent
                 else:
-                    break
-        if side in ('after','both'):
-            for idx in xrange(1,window+1):
-                rel = i+idx
-                if rel<len(dists):
-                    if dists[rel] is not np.nan:
-                        combine += dist[rel]
-                else:
-                    break
-        output[year] = {}
-        if (combine.sum()>0) and (d.sum()>0):
-            if last is not None:
-                div,ent = shuffler(n1=d.sum(),n2=last.sum(),combined=combine)
-                output[year]['jsd'] = div
-                output[year]['H'] = ent
-            else:
-                ent = shuffler(n1=d.sum(),n2=None,combined=combine)
-                output[year]['jsd'] = np.nan
-                output[year]['H'] = ent
+                    ent = shuffler(n1=d.sum(),n2=None,combined=combine)
+                    #output[year]['jsd'] = np.nan
+                    output[year]['H'] = ent
+            # else:
+            #     output[year]['jsd'] = np.nan
+            #     output[year]['H'] = np.nan
+            last = d
         else:
-            output[year]['jsd'] = np.nan
-            output[year]['H'] = np.nan
+            last = None
 
-    return output
+
+    return cat,output
 
 
 
@@ -177,14 +184,21 @@ if __name__ == '__main__':
     if args.raw:
         with timed('parallel processing, raw measures'):
             results = pool.map(process_grp,files)
-        with timed('writing results, raw measures')
+        with timed('writing results, raw measures'):
             all_dists = []
-            with open(args.output,'w') as fout:
+            with open(args.output+'raw_results','w') as fout:
                 for cat,output,dists in results:
-                    all_dists.append(dists)
+                    all_dists.append((cat,dists))
                     for year in output:
+                        fout.write('\t'.join(map(str,[cat,year,output[year]['jsd'],output[year]['jsd_c'],output[year]['H'],output[year]['H_c']]))+'\n')
 
     if args.null:
         with timed('parallel processing, null model'):
             func_partial = partial(windowed_null_measures,window=args.window,side=args.side)
-            null_results = pool.map(func_partial,files)
+            null_results = pool.map(func_partial,all_dists)
+            with timed('writing results, null models'):
+                with open(args.output+'null_results','w') as fout:
+                    for cat,output in null_results:
+                        for year in output:
+                            fout.write('\t'.join(map(str,[cat,year,output,output[year]['jsd'],output[year]['jsd_c'],output[year]['H'],output[year]['H_c']]))+'\n')
+
