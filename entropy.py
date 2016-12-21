@@ -137,7 +137,7 @@ def process_grp(fi):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser("Script for calculating information theoretic of text evolution among WoS abstracts")
-    parser.add_argument("-p", "--procs",help="specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=str)
+    parser.add_argument("-p", "--procs",help="specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
     parser.add_argument("-r", "--raw", help="calculate raw entropy/divergence measures",action="store_true")
     parser.add_argument("-n", "--null", help="calculate null model entropy/divergence measures",action="store_true")
     parser.add_argument("-w", "--window", help="window size for null model calculations",type=int,default=1)
@@ -164,22 +164,24 @@ if __name__ == '__main__':
     rootLogger.addHandler(consoleHandler)
     rootLogger.setLevel(logging.INFO)
 
-    ### stopword setup
-    stop = set(stopwords.words('english'))
-    stemmer = EnglishStemmer()
-    stop = stop.union([stemmer.stem(s) for s in stop])
+    with timed('vocabulary setup'):
+        ### stopword setup
+        stop = set(stopwords.words('english'))
+        stemmer = EnglishStemmer()
+        stop = stop.union([stemmer.stem(s) for s in stop])
 
-    ### vocabulary setup
-    global_term_counts = pd.Series.from_csv(data_dir+'global_term_counts.csv',encoding='utf8')
-    pruned = global_term_counts[global_term_counts>=vocab_thresh]
-    vocab = set([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
+        ### vocabulary setup
+        global_term_counts = pd.Series.from_csv(data_dir+'global_term_counts.csv',encoding='utf8')
+        pruned = global_term_counts[global_term_counts>=vocab_thresh]
+        vocab = set([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
 
-    ### file setup
-    files = glob("{}by-cat/*".format(data_dir))
+    with timed('pool setup'):
+        ### file setup
+        files = glob("{}by-cat/*".format(data_dir))
 
-    ### pool setup
-    chunksize = int(math.ceil(len(files) / float(procs)))
-    pool = mp.Pool(procs)
+        ### pool setup
+        chunksize = int(math.ceil(len(files) / float(args.procs)))
+        pool = mp.Pool(args.procs)
 
     if args.raw:
         with timed('parallel processing, raw measures'):
