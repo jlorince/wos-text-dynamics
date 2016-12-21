@@ -164,6 +164,8 @@ if __name__ == '__main__':
         args.null_bootstrap_samples = 5
         args.thoth_mc_samples = 5
 
+    logger.info(str(args))
+
     ### LOGGING SETUP
     now = datetime.datetime.now()
     if args.logfile:
