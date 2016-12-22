@@ -87,11 +87,11 @@ def windowed_null_measures(dist_tuple,window=1,side='before'):
             else:
                 last = None
 
-        if not os.path.exists(args.output+cat):
-            os.mkdir(args.output+cat)
-        with open('{}{}/null_results_{}_{}'.format(args.output,cat,window,side),'w') as fout:
-            for year in output:
-                fout.write('\t'.join([str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
+    if not os.path.exists(args.output+cat):
+        os.mkdir(args.output+cat)
+    with open('{}{}/null_results_{}_{}'.format(args.output,cat,window,side),'w') as fout:
+        for year in output:
+            fout.write('\t'.join([str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
 
     return None
 
@@ -110,7 +110,7 @@ def process_grp(fi):
             with timed('raw {}-->{}'.format(cat,year)):
                 year_df = df[df.year==year]
                 output[year] = {'jsd':np.array([np.nan]*5),'jsd_c':np.array([np.nan]*5),'H':np.array([np.nan]*5),'H_c':np.array([np.nan]*5)}
-                n = len(df)
+                n = len(year_df)
                 output[year]['n'] = n
                 if n>0:
                     current = termcounts(year_df.abstract)
@@ -129,12 +129,12 @@ def process_grp(fi):
                 else:
                     last = None
                     dists.append(np.nan)
-        if not os.path.exists(args.output+cat):
-            os.mkdir(args.output+cat)
-        with open('{}{}/raw_results'.format(args.output,cat),'w') as fout:
-            for year in output:
-                fout.write('\t'.join([str(year),str(output[year]['n'])]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','jsd_c','H','H_c')])+'\n')
-        return (cat,dists)
+    if not os.path.exists(args.output+cat):
+        os.mkdir(args.output+cat)
+    with open('{}{}/raw_results'.format(args.output,cat),'w') as fout:
+        for year in output:
+            fout.write('\t'.join([str(year),str(output[year]['n'])]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','jsd_c','H','H_c')])+'\n')
+    return (cat,dists)
 
 def gen_dists(fi):
     cat = fi[fi.rfind('/')+1:-4]
