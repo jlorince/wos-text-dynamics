@@ -87,7 +87,9 @@ def windowed_null_measures(dist_tuple,window=1,side='before'):
             else:
                 last = None
 
-        with open(args.output+'null_results_{}_{}_{}'.format(cat,window,side),'w') as fout:
+        if not os.path.exists(args.output+cat):
+            os.mkdir(arg.output+cat)
+        with open('{}{}/null_results_{}_{}'.format(args.output,cat,window,side),'w') as fout:
             for year in output:
                 fout.write('\t'.join([str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
 
@@ -127,8 +129,9 @@ def process_grp(fi):
                 else:
                     last = None
                     dists.append(np.nan)
-
-        with open(args.output+'raw_results_{}'.format(cat),'w') as fout:
+        if not os.path.exists(args.output+cat):
+            os.mkdir(arg.output+cat)
+        with open('{}{}/raw_results'.format(args.output,cat),'w') as fout:
             for year in output:
                 fout.write('\t'.join([str(year),str(output[year]['n'])]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','jsd_c','H','H_c')])+'\n')
         return (cat,dists)
