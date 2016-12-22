@@ -87,7 +87,11 @@ def windowed_null_measures(dist_tuple,window=1,side='before'):
             else:
                 last = None
 
-    return cat,output
+        with open(args.output+'null_results_{}_{}_{}'.format(cat,window,side),'w') as fout:
+            for year in output:
+                fout.write('\t'.join([str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
+
+    return None
 
 
 
@@ -124,7 +128,10 @@ def process_grp(fi):
                     last = None
                     dists.append(np.nan)
 
-        return cat,output,dists
+        with open(args.output+'raw_results_{}'.format(cat),'w') as fout:
+            for year in output:
+                fout.write('\t'.join([str(year),str(output[year]['n'])]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','jsd_c','H','H_c')])+'\n')
+        return (cat,dists)
 
 def gen_dists(fi):
     cat = fi[fi.rfind('/')+1:-4]
@@ -139,7 +146,7 @@ def gen_dists(fi):
                     dists.append(current)
                 else:
                     dists.append(np.nan)
-    return cat,dists
+    return (cat,dists)
 
 
 
@@ -215,14 +222,15 @@ if __name__ == '__main__':
 
         if args.raw:
             with timed('parallel processing, raw measures'):
-                results = pool.map(process_grp,files)
-            with timed('writing results, raw measures'):
-                all_dists = []
-                with open(args.output+'raw_results','w') as fout:
-                    for cat,output,dists in results:
-                        all_dists.append((cat,dists))
-                        for year in output:
-                            fout.write('\t'.join([cat,str(year),str(output[year]['n'])]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','jsd_c','H','H_c')])+'\n')
+                #results = pool.map(process_grp,files)
+                all_dists = pool.map(process_grp,files)
+            # with timed('writing results, raw measures'):
+            #     all_dists = []
+            #     with open(args.output+'raw_results','w') as fout:
+            #         for cat,output,dists in results:
+            #             all_dists.append((cat,dists))
+            #             for year in output:
+            #                 fout.write('\t'.join([cat,str(year),str(output[year]['n'])]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','jsd_c','H','H_c')])+'\n')
         else:
             ### just generate dists, assuming we've already done our other computations
             with timed('parallel dist generation'):
@@ -232,20 +240,22 @@ if __name__ == '__main__':
         if args.null:
             with timed('parallel processing, null model (window={}, side={})'.format(1,'before')):
                 func_partial = partial(windowed_null_measures,window=1,side='before')
-                null_results = pool.map(func_partial,all_dists)
-                with timed('writing results, null models'):
-                    with open(args.output+'null_results_{}_{}'.format(args.window,args.side),'w') as fout:
-                        for cat,output in null_results:
-                            for year in output:
-                                fout.write('\t'.join([cat,str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
+                #null_results = pool.map(func_partial,all_dists)
+                pool.map(func_partial,all_dists)
+                # with timed('writing results, null models'):
+                #     with open(args.output+'null_results_{}_{}'.format(args.window,args.side),'w') as fout:
+                #         for cat,output in null_results:
+                #             for year in output:
+                #                 fout.write('\t'.join([cat,str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
 
             for window in (1,2,3,4,5,25):
                 with timed('parallel processing, null model (window={}, side={})'.format(window,'both')):
                     #func_partial = partial(windowed_null_measures,window=args.window,side=args.side)
                     func_partial = partial(windowed_null_measures,window=window,side='both')
-                    null_results = pool.map(func_partial,all_dists)
-                    with timed('writing results, null models'):
-                        with open(args.output+'null_results_{}_{}'.format(args.window,args.side),'w') as fout:
-                            for cat,output in null_results:
-                                for year in output:
-                                    fout.write('\t'.join([cat,str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
+                    #null_results = pool.map(func_partial,all_dists)
+                    pool.map(func_partial,all_dists)
+                    # with timed('writing results, null models'):
+                    #     with open(args.output+'null_results_{}_{}'.format(args.window,args.side),'w') as fout:
+                    #         for cat,output in null_results:
+                    #             for year in output:
+                    #                 fout.write('\t'.join([cat,str(year)]+[','.join(output[year][measure].astype(str)) for measure in ('jsd','H')])+'\n')
