@@ -49,7 +49,7 @@ def process_grp(fi):
                 output[year]['n'] = n
                 if n>0:
                     tc_current = termcounts(year_df.abstract)
-                    current = np.random.multinomial(n=args.n,pvals=tc_current/float(tc_current.sum()))
+                    current = np.random.multinomial(n=args.n_samples,pvals=tc_current/float(tc_current.sum()))
 
                     if last is not None:
                         output[year]['jsd'] = thoth.calc_jsd(current,last,0.5,args.thoth_mc_samples)
@@ -132,7 +132,7 @@ if __name__ == '__main__':
             unpacked = token_counts['counts'].apply(lambda x: pd.Series(map(int,x.split(',')),index=dr)).T
             unpacked.columns = token_counts['cat'].values
 
-            include = unpacked.columns[unpacked.apply(lambda x: np.all(x>=args.n))]
+            include = unpacked.columns[unpacked.apply(lambda x: np.all(x>=args.n_samples))]
 
 
 
