@@ -46,6 +46,8 @@ def gen_dists(fi):
 
     with open('/backup/home/jared/storage/wos-text-dynamics-data/token_counts/'+cat,'w') as fout:
         fout.write(cat+'\t'+','.join([str(int(d.sum())) if d is not np.nan else '0' for d in dists])+'\n')
+    with open('/backup/home/jared/storage/wos-text-dynamics-data/vocab_sizes/'+cat,'w') as fout:
+        fout.write(cat+'\t'+','.join([str(int((d>0).sum())) if d is not np.nan else '0' for d in dists])+'\n')
 
 
 
