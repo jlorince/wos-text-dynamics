@@ -99,7 +99,10 @@ def windowed_null_measures(dist_tuple,window=1,side='before'):
 
 def process_grp(fi):
     cat = fi[fi.rfind('/')+1:-4]
-    with timed('base calculations for {}'.format(cat)):
+    with timed('base calculations for {}'.format(cat)):       
+        if os.path.exists('{}{}/raw_results'.format(args.output,cat)):
+            rootLogger.info('raw results for category "{}" already processed, generating dists'.format(cat))
+            return gen_dists(fi)
         df = pd.read_pickle(fi)
         # calculate raw entropy and divergence measures by year
         output = {}
