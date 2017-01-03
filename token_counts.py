@@ -113,5 +113,5 @@ if __name__ == '__main__':
     #with timed('parallel dist generation'):
     #    pool.map(gen_dists,files) 
     with timed('new term calculations'):
-        pool.map(new_terms,files)
+        pool.map(new_terms_by_year,files)
 
