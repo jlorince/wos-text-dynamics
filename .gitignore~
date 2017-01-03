@@ -90,4 +90,3 @@ ENV/
 
 # custom
 *.log
-notebooks*
