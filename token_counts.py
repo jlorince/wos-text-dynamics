@@ -81,9 +81,7 @@ if __name__ == '__main__':
     with timed('pool setup'):
         ### file setup
         files = glob("{}by-cat/*".format(args.datadir))
-        if args.debug:
-            files = files[:3]
-
+        
         ### pool setup
         chunksize = int(math.ceil(len(files) / float(args.procs)))
         pool = mp.Pool(args.procs)
