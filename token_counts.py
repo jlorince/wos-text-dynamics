@@ -50,6 +50,27 @@ def gen_dists(fi):
         fout.write(cat+'\t'+','.join([str(int((d>0).sum())) if d is not np.nan else '0' for d in dists])+'\n')
 
 
+def new_terms_by_year(fi):
+    cat = fi[fi.rfind('/')+1:-4]
+    result = []
+    cumulative = np.zeros(len(vocab))
+    with timed('vocab change for {}'.format(cat)):
+        df = pd.read_pickle(fi)
+        last = None
+        for year in xrange(1991,2016):
+            with timed('dists {}-->{}'.format(cat,year)):
+                year_df = df[df.year==year]
+                current = termcounts(year_df.abstract)
+                new_terms = ((current!=0)&(cumulative==0)).sum()
+                cumulative += current
+                if current.sum()>0:
+                    result.append(new_terms)
+                else:
+                    result.append(0)    
+    with open('/backup/home/jared/storage/wos-text-dynamics-data/new_terms/'+cat,'w') as fout:
+        fout.write(cat+'\t'+','.join([str(int(d)) for d in result])+'\n')
+
+
 
 if __name__ == '__main__':
 
@@ -89,7 +110,8 @@ if __name__ == '__main__':
         pool = mp.Pool(args.procs)
 
 
-    with timed('parallel dist generation'):
-        pool.map(gen_dists,files) 
-                                
+    #with timed('parallel dist generation'):
+    #    pool.map(gen_dists,files) 
+    with timed('new term calculations'):
+        pool.map(new_terms,files)
 
