@@ -1,5 +1,5 @@
 import numpy as np
-import gzip,time,datetime,string,signal,sys,cPickle,codecs,csv
+import gzip,time,datetime,string,signal,sys,cPickle,codecs,csv,math
 import pandas as pd
 import multiprocessing as mp
 from nltk.stem.snowball import EnglishStemmer
@@ -28,19 +28,30 @@ class timed(object):
             print '{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad)
 
 
-def parse_abs(rawtext_arr):
-    result = []
-    for i,rawtext in enumerate(rawtext_arr):
-        if pd.isnull(rawtext):
-            result.append('')
+# def parse_abs(rawtext_arr):
+#     result = []
+#     for i,rawtext in enumerate(rawtext_arr):
+#         if pd.isnull(rawtext):
+#             result.append('')
+#         else:
+#             rawtext = rawtext.translate(None,string.punctuation).decode('utf8').split()
+#             if len(rawtext)>0:
+#                 cleaned = [stemmer.stem(w) for w in rawtext]
+#                 result.append(' '.join(cleaned))
+#             else:
+#                 result.append('')
+#     return result
+
+def parse_abs(rawtext):
+    if pd.isnull(rawtext):
+        result.append('')
+    else:
+        rawtext = rawtext.translate(None,string.punctuation).decode('utf8').split()
+        if len(rawtext)>0:
+            cleaned = [stemmer.stem(w) for w in rawtext]
+            return ' '.join(cleaned)
         else:
-            rawtext = rawtext.translate(None,string.punctuation).decode('utf8').split()
-            if len(rawtext)>0:
-                cleaned = [stemmer.stem(w) for w in rawtext]
-                result.append(' '.join(cleaned))
-            else:
-                result.append('')
-    return result
+            return ''
 
 
 def process(year):
@@ -53,7 +64,10 @@ def process(year):
         with timed('abstract loading',year=year):
             abs_current = pd.read_table('P:/Projects/WoS/WoS/parsed/abstracts/{}.txt.gz'.format(year),header=None,names=['uid','abstract'], nrows=debug).dropna()
         with timed('abstract parsing',year=year):
-            abs_current['abstract'] = parse_abs(abs_current['abstract'].values)
+            #abs_current['abstract'] = parse_abs(abs_current['abstract'].values)
+            chunksize = int(math.ceil(len(abs_current) / float(procs)))
+            abs_current['abstract'] = pool.map(parse_abs,abs_current['abstract'].values,chunksize=chunksize)
+
         with timed('keyword loading',year=year):
             #kw_current = pd.read_table('S:/UsersData_NoExpiration/jjl2228/keywords/pubs_by_year/{}.txt.gz'.format(year),header=None,names=['keyword','uid'],nrows=debug)
             kw_current = pd.read_table('P:/Projects/WoS/WoS/parsed/keywords/{}.txt.gz'.format(year),header=None,names=['uid','nk','keywords'],usecols=['uid','keywords'],quoting=csv.QUOTE_NONE,nrows=debug)
@@ -73,18 +87,21 @@ def process(year):
 if __name__=='__main__':
 
 
-    with timed('main data processing',pad=' ######## '):
-        with timed('parallel processing'):
-            pool = mp.Pool(25)
-            result = pool.map(process,xrange(1991,2016))
-            print '----result collected----'
-            with timed('pool shutdown'):
-                try:
-                    pool.terminate()
-                    pool.close()
-                except:
-                   print "exception in pool shutdown, but let's keep going..."
+    # with timed('main data processing',pad=' ######## '):
+    #     with timed('parallel processing'):
+    #         pool = mp.Pool(25)
+    #         result = pool.map(process,xrange(1991,2016))
+    #         print '----result collected----'
+    #         with timed('pool shutdown'):
+    #             try:
+    #                 pool.terminate()
+    #                 pool.close()
+    #             except:
+    #                print "exception in pool shutdown, but let's keep going..."
 
+    result = []
+    for year in xrange(1991,2016):
+        result.append(process(year))
 
     with timed('dataframe concatenation'):
         df = pd.concat(result)
