@@ -110,7 +110,7 @@ if __name__=='__main__':
     with timed('dataframe concatenation'):
         df = pd.concat(result)
     with timed('dataframe saving'):
-        df.to_pickle('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/{}/all_pubs.pkl')
+        df.to_pickle('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/{}/all_pubs.pkl'.format(limit_journal_key))
 
     with timed('word freq distribution'):
         termdict = {}

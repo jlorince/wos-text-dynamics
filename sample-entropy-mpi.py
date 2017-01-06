@@ -42,7 +42,7 @@ def termcounts(abs_ser):
     arr = np.array([tc.get(k,0) for k in vocab])
     return arr
 
-def entropy_bs
+def entropy_bs()
 
 def process_grp(fi):
     cat = fi[fi.rfind('/')+1:-4]
