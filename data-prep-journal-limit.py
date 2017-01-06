@@ -6,6 +6,8 @@ from nltk.stem.snowball import EnglishStemmer
 from collections import Counter
 stemmer = EnglishStemmer()
 
+procs = mp.cpu_count()
+
 tmpdir = 'S:/UsersData_NoExpiration/jjl2228/keywords/temp/'
 
 debug = None # set this to some small-ish number to only read part of raw files, for debugging
@@ -98,6 +100,8 @@ if __name__=='__main__':
     #                 pool.close()
     #             except:
     #                print "exception in pool shutdown, but let's keep going..."
+
+    pool = mp.Pool(procs)
 
     result = []
     for year in xrange(1991,2016):
