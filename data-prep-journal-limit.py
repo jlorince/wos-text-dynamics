@@ -45,15 +45,27 @@ class timed(object):
 #     return result
 
 def parse_abs(rawtext):
-    if pd.isnull(rawtext):
-        result.append('')
+    # if pd.isnull(rawtext):
+    #     return ''
+    # else:
+    rawtext = rawtext.translate(None,string.punctuation).decode('utf8').split()
+    if len(rawtext)>0:
+        cleaned = [stemmer.stem(w) for w in rawtext]
+        return ' '.join(cleaned)
     else:
-        rawtext = rawtext.translate(None,string.punctuation).decode('utf8').split()
-        if len(rawtext)>0:
-            cleaned = [stemmer.stem(w) for w in rawtext]
-            return ' '.join(cleaned)
-        else:
-            return ''
+        return ''
+
+def normalize_text(text):
+    norm_text = text.lower()
+
+    # Replace breaks with spaces
+    norm_text = norm_text.replace('|', ' ')
+
+    # Pad punctuation with spaces on both sides
+    for char in ['.', '"', ',', '(', ')', '!', '?', ';', ':']:#, '-', '/']:
+        norm_text = norm_text.replace(char, ' ' + char + ' ')
+
+    return norm_text.strip()
 
 
 def process(year):
@@ -64,11 +76,12 @@ def process(year):
                                   usecols=["uid","pubtype","paper_title","source_title","doctype"])
             md_current = md_current[md_current.source_title.isin(limit_journals)]
         with timed('abstract loading',year=year):
-            abs_current = pd.read_table('P:/Projects/WoS/WoS/parsed/abstracts/{}.txt.gz'.format(year),header=None,names=['uid','abstract'], nrows=debug).dropna()
+            abs_current = pd.read_table('P:/Projects/WoS/WoS/parsed/abstracts/{}.txt.gz'.format(year),header=None,names=['uid','abstract'], nrows=debug, quoting=csv.QUOTE_NONE).dropna()
         with timed('abstract parsing',year=year):
             #abs_current['abstract'] = parse_abs(abs_current['abstract'].values)
             chunksize = int(math.ceil(len(abs_current) / float(procs)))
-            abs_current['abstract'] = pool.map(parse_abs,abs_current['abstract'].values,chunksize=chunksize)
+            abs_current['abs_stemmed'] = pool.map(parse_abs,abs_current['abstract'].values,chunksize=chunksize)
+            abs_current['abs_raw'] = pool.map(normalize_text,abs_current['abstract'].values,chunksize=chunksize)
 
         with timed('keyword loading',year=year):
             #kw_current = pd.read_table('S:/UsersData_NoExpiration/jjl2228/keywords/pubs_by_year/{}.txt.gz'.format(year),header=None,names=['keyword','uid'],nrows=debug)
