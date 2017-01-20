@@ -31,6 +31,7 @@ class process(object):
         self.vocab = vocab
         self.window = window
         self.logger = logger
+        self.args = args
 
 
 
