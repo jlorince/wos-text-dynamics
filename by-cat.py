@@ -183,6 +183,8 @@ if __name__=='__main__':
     rootLogger.addHandler(consoleHandler)
     rootLogger.setLevel(logging.INFO)
 
+    rootLogger.info(str(args))
+
     ### Vocabulary setup
     vocab_path = args.datadir+'vocab_pruned_'+str(args.vocab_thresh)
     if os.path.exists(vocab_path):
