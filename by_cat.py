@@ -125,11 +125,11 @@ class process(object):
 
         result = [self.shuffler(x) for x in range(self.args.null_bootstrap_samples)]
         
-        dist_path = '{}results/termdist_{}.npy'.format(self.args.output,cat_name)
+        dist_path = '{}termdist_{}.npy'.format(self.args.output,cat_name)
         if not os.path.exists(dist_path):
             np.save(dist_path,word_dists)   
         
-        with open('{}results/results_{}_{}'.format(self.args.output,window,cat_name),'w') as out:
+        with open('{}results_{}_{}'.format(self.args.output,window,cat_name),'w') as out:
             
             for measure in ('ents','ent_difs','jsds'):
                 out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
