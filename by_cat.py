@@ -123,7 +123,7 @@ class process(object):
         ents,ent_difs,jsds = self.calc_measures(word_dists)
         
 
-        result = [shuffler(x) for x in range(self.args.null_bootstrap_samples)]
+        result = [self.shuffler(x) for x in range(self.args.null_bootstrap_samples)]
         
         dist_path = '{}results/termdist_{}.npy'.format(self.args.output,cat_name)
         if not os.path.exists(dist_path):
