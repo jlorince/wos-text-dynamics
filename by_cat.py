@@ -101,7 +101,7 @@ class process(object):
         
     def parse_cat(self,fi):
         df = pd.read_pickle(fi)
-        if len(df==0):
+        if len(df)==0:
             return 0
         # generate word distributions 
 
