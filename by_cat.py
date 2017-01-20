@@ -129,7 +129,7 @@ class process(object):
         if not os.path.exists(dist_path):
             np.save(dist_path,word_dists)   
         
-        with open('{}results_{}_{}'.format(self.args.output,window,cat_name),'w') as out:
+        with open('{}results_{}_{}'.format(self.args.output,self.window,cat_name),'w') as out:
             
             for measure in ('ents','ent_difs','jsds'):
                 out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
