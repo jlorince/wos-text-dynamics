@@ -158,7 +158,7 @@ if __name__=='__main__':
 
     parser = argparse.ArgumentParser("Script for calculating information theoretic measures of text evolution among WoS abstracts")
     parser.add_argument("-p", "--procs",help="specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
-    parser.add_argument("-w", "--window", help="window size, enter a single value, range (x-y), or list (x,y,z)",type=str,default='1')
+    parser.add_argument("-w", "--window", help="window size, enter a single value, range (x_y), or list (x,y,z)",type=str,default='1')
     parser.add_argument("-l", "--logfile", help="prefix for logfile",type=str,default='')
     parser.add_argument("-o", "--output", help="output path for results",type=str,default='/backup/home/jared/storage/wos-text-dynamics-data/results/')
     parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=100)
@@ -204,8 +204,8 @@ if __name__=='__main__':
         rootLogger.info("Total vocab size= {}".format(len(vocab)))
 
     pool = mp.Pool(procs)
-    if '-' in args.window:
-        start,end = map(int,args.window.split('-'))
+    if '_' in args.window:
+        start,end = map(int,args.window.split('_'))
         window_range = range(start,end+1) 
     if ',' in args.window:
         window_range = map(int,args.window.split(','))
