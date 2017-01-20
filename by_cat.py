@@ -146,7 +146,7 @@ class process(object):
                 ci = 1.96 * samples.std(0) / np.sqrt(self.args.null_bootstrap_samples)
                 out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
                 out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
-        rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat,self.window))
+        rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat_name,self.window))
         return 1
  
 
