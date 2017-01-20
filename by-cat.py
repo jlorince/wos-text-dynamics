@@ -141,7 +141,7 @@ def parse_cat(cat_name,window=1):
 
 def go(window_size,files):
     complete = 0
-    for fi,result  in tq(zip(all_cats,pool.imap_unordered(lambda f: parse_cat(f,window=window),files)),total=len(files)):
+    for fi,result  in tq(zip(all_cats,pool.imap_unordered(lambda f: parse_cat(f,window=window_size),files)),total=len(files)):
         cat = fi[fi.rfind('/')+1:-4]
         if result == 0:
             rootLogger.info('No data for category "{}"'.format(cat))
