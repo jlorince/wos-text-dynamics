@@ -122,8 +122,8 @@ def parse_cat(fi,window=1):
     # except:
     #     pass
     # pool = mp.Pool(procs)
-    #result = [r for r in tq(pool.imap_unordered(lambda x: shuffler(x,all_tokens,token_counts),range(args.bootstraps),chunksize=args.bootstraps/procs),total=args.bootstraps)]
-    result = [shuffler(x,all_tokens,token_counts,window_size=window) for x in range(args.bootstraps)]
+    #result = [r for r in tq(pool.imap_unordered(lambda x: shuffler(x,all_tokens,token_counts),range(args.null_bootstrap_samples),chunksize=args.null_bootstrap_samples/procs),total=args.null_bootstrap_samples)]
+    result = [shuffler(x,all_tokens,token_counts,window_size=window) for x in range(args.null_bootstrap_samples)]
     
     dist_path = '{}results/termdist_{}.npy'.format(args.output,cat_name)
     if not os.path.exists(dist_path):
@@ -136,7 +136,7 @@ def parse_cat(fi,window=1):
         for i,measure in enumerate(['entropy-null','entdif-null','jsd-null']):
             samples = np.array([r[i] for r in result])
             m = samples.mean(0)
-            ci = 1.96 * samples.std(0) / np.sqrt(args.bootstraps)
+            ci = 1.96 * samples.std(0) / np.sqrt(args.null_bootstrap_samples)
             out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
             out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
     return 1
