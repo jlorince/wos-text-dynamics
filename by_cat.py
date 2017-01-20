@@ -34,7 +34,6 @@ class process(object):
         self.args = args
 
 
-
     def entropy(self,arr,base=2):
         return scipy_entropy(arr,base=base)
 
@@ -100,12 +99,20 @@ class process(object):
         return self.calc_measures(shuffled_word_dists)
         
     def parse_cat(self,fi):
+
+        cat_name = fi[fi.rfind('/')+1:-4]
+
+        result_path = '{}results_{}_{}'.format(self.args.output,self.window,cat_name)
+        if os.path.exists(result_path):
+            rootLogger.info('Category "{}" already done for window={}'.format(cat_name,self.window))
+            return 0
+
         df = pd.read_pickle(fi)
         if len(df)==0:
+            rootLogger.info('No data for category "{}"'.format(cat_name))
             return 0
         # generate word distributions 
 
-        cat_name = fi[fi.rfind('/')+1:-4]
         word_dists = np.zeros((25,len(self.vocab)))
         for year,grp in df.groupby('year'):
             word_dists[year-1991] = self.termcounts(grp.abstract)
@@ -129,7 +136,7 @@ class process(object):
         if not os.path.exists(dist_path):
             np.save(dist_path,word_dists)   
         
-        with open('{}results_{}_{}'.format(self.args.output,self.window,cat_name),'w') as out:
+        with open(result_path,'w') as out:
             
             for measure in ('ents','ent_difs','jsds'):
                 out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
@@ -139,6 +146,7 @@ class process(object):
                 ci = 1.96 * samples.std(0) / np.sqrt(self.args.null_bootstrap_samples)
                 out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
                 out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
+        rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat,self.window))
         return 1
  
 
@@ -208,11 +216,5 @@ if __name__=='__main__':
     for w in window_range:
         complete = 0
         processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
-        for fi,result  in tq(zip(files,pool.imap_unordered(processor.parse_cat,files)),total=len(files)):
-            cat = fi[fi.rfind('/')+1:-4]
-            if result == 0:
-                rootLogger.info('No data for category "{}"'.format(cat))
-            if result == 1:
-                rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat,window))
-            complete+=result
-        rootLogger.info('{} total categories processed for window size={}'.format(complete,window))
+        pool.map(processor.parse_cat,files,chunksize=len(files)/args.procs)
+
