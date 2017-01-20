@@ -43,21 +43,21 @@ def termcounts(abs_ser):
 def jsd(p,q):
     return entropy((p+q)/2.,base=2) - 0.5*entropy(p,base=2) - 0.5*entropy(q,base=2)
 
-def calc_measures(word_dists,window_size=1):
+def calc_measures(word_dists,window=1):
     ents = []
     jsds = []
     ent_difs = []
     apnd = []
-    mx = len(word_dists)-(2*window_size-1)
+    mx = len(word_dists)-(2*window-1)
     for i in range(mx):
-        a = np.sum(word_dists[i:i+window_size],axis=0)
+        a = np.sum(word_dists[i:i+window],axis=0)
         asm = float(a.sum())
         if asm ==0:
             enta = np.nan       
         else:
             a = a/asm
             enta = entropy(a)
-        b = np.sum(word_dists[i+window_size:i+window_size*2],axis=0)
+        b = np.sum(word_dists[i+window:i+window*2],axis=0)
         bsm = float(b.sum())
         if bsm == 0:
             entb = np.nan
@@ -66,7 +66,7 @@ def calc_measures(word_dists,window_size=1):
             entb = entropy(b)
 
         ents.append(enta)
-        if i+window_size>=mx:
+        if i+window>=mx:
             apnd.append(entb)
         
         if asm==0 or bsm==0:
@@ -114,7 +114,7 @@ def parse_cat(fi,window=1):
     all_tokens = np.array(all_tokens)
 
     # calculate raw measures
-    ents,ent_difs,jsds = calc_measures(word_dists,window_size=window)
+    ents,ent_difs,jsds = calc_measures(word_dists,window=window)
     
     #calculate null measures
     # try:
@@ -123,7 +123,7 @@ def parse_cat(fi,window=1):
     #     pass
     # pool = mp.Pool(procs)
     #result = [r for r in tq(pool.imap_unordered(lambda x: shuffler(x,all_tokens,token_counts),range(args.null_bootstrap_samples),chunksize=args.null_bootstrap_samples/procs),total=args.null_bootstrap_samples)]
-    result = [shuffler(x,all_tokens,token_counts,window_size=window) for x in range(args.null_bootstrap_samples)]
+    result = [shuffler(x,all_tokens,token_counts,window=window) for x in range(args.null_bootstrap_samples)]
     
     dist_path = '{}results/termdist_{}.npy'.format(args.output,cat_name)
     if not os.path.exists(dist_path):
@@ -141,14 +141,14 @@ def parse_cat(fi,window=1):
             out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
     return 1
 
-def go(window_size,files):
+def go(window,files):
     complete = 0
-    for fi,result  in tq(zip(all_cats,pool.imap_unordered(lambda f: parse_cat(f,window=window_size),files)),total=len(files)):
+    for fi,result  in tq(zip(all_cats,pool.imap_unordered(lambda f: parse_cat(f,window=window),files)),total=len(files)):
         cat = fi[fi.rfind('/')+1:-4]
         if result == 0:
             rootLogger.info('No data for category "{}"'.format(cat))
         if result == 1:
-            rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat,window_size))
+            rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat,window))
         complete+=result
     rootLogger.info('{} total categories processed for window size={}'.format(complete,window))
         
