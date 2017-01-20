@@ -46,7 +46,7 @@ class process(object):
 
     # calcualte Jensen Shannon Divergence of two probabability distributions
     def jsd(self,p,q):
-        return entropy((p+q)/2.,base=2) - 0.5*entropy(p,base=2) - 0.5*entropy(q,base=2)
+        return self.entropy((p+q)/2.,base=2) - 0.5*self.entropy(p,base=2) - 0.5*self.entropy(q,base=2)
 
     def calc_measures(self,word_dists):
         ents = []
@@ -61,14 +61,14 @@ class process(object):
                 enta = np.nan       
             else:
                 a = a/asm
-                enta = entropy(a)
+                enta = self.entropy(a)
             b = np.sum(word_dists[i+self.window:i+self.window*2],axis=0)
             bsm = float(b.sum())
             if bsm == 0:
                 entb = np.nan
             else:
                 b = b/bsm
-                entb = entropy(b)
+                entb = self.entropy(b)
 
             ents.append(enta)
             if i+self.window>=mx:
@@ -79,7 +79,7 @@ class process(object):
                 jsds.append(np.nan)
             else:
                 ent_difs.append(entb-enta)
-                jsds.append(jsd(a,b))
+                jsds.append(self.jsd(a,b))
                     
         return np.array(ents+apnd),np.array(ent_difs),np.array(jsds)
             
@@ -96,7 +96,7 @@ class process(object):
             word_dist[unique] = counts
             shuffled_word_dists[i] = word_dist
             idx+=toke
-        return calc_measures(shuffled_word_dists)
+        return self.calc_measures(shuffled_word_dists)
         
     def parse_cat(self,fi):
         df = pd.read_pickle(fi)
@@ -119,7 +119,7 @@ class process(object):
         self.all_tokens = np.array(self.all_tokens)
 
         # calculate raw measures
-        ents,ent_difs,jsds = calc_measures(word_dists)
+        ents,ent_difs,jsds = self.calc_measures(word_dists)
         
 
         result = [shuffler(x) for x in range(self.args.null_bootstrap_samples)]
