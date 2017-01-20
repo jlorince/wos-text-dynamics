@@ -108,7 +108,7 @@ class process(object):
         cat_name = fi[fi.rfind('/')+1:-4]
         word_dists = np.zeros((25,len(self.vocab)))
         for year,grp in df.groupby('year'):
-            word_dists[year-1991] = termcounts(grp.abstract)
+            word_dists[year-1991] = self.termcounts(grp.abstract)
 
         # total token count by year
         self.token_counts = word_dists.sum(1,dtype=int)
