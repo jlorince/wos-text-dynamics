@@ -25,128 +25,122 @@ class timed(object):
         else:
             rootLogger.info('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad))
     
-def entropy(arr,base=2):
-    return scipy_entropy(arr,base=base)
+class process(object):
 
-# Given a pandas.Series of procesed abstracts, return the word frequency distribution 
-# across all abstracts (limited to our chose vocabulary)
-def termcounts(abs_ser):
-    tc = Counter(' '.join(abs_ser).split())
-    arr = np.array([tc.get(k,0) for k in vocab])
-    return arr 
+    def __init__(self,vocab,window,args,logger):
+        self.vocab = vocab
+        self.window = window
+        self.logger = logger
 
-# calcualte Jensen Shannon Divergence of two probabability distributions
-def jsd(p,q):
-    return entropy((p+q)/2.,base=2) - 0.5*entropy(p,base=2) - 0.5*entropy(q,base=2)
 
-def calc_measures(word_dists,window=1):
-    ents = []
-    jsds = []
-    ent_difs = []
-    apnd = []
-    mx = len(word_dists)-(2*window-1)
-    for i in range(mx):
-        a = np.sum(word_dists[i:i+window],axis=0)
-        asm = float(a.sum())
-        if asm ==0:
-            enta = np.nan       
-        else:
-            a = a/asm
-            enta = entropy(a)
-        b = np.sum(word_dists[i+window:i+window*2],axis=0)
-        bsm = float(b.sum())
-        if bsm == 0:
-            entb = np.nan
-        else:
-            b = b/bsm
-            entb = entropy(b)
 
-        ents.append(enta)
-        if i+window>=mx:
-            apnd.append(entb)
+    def entropy(self,arr,base=2):
+        return scipy_entropy(arr,base=base)
+
+    # Given a pandas.Series of procesed abstracts, return the word frequency distribution 
+    # across all abstracts (limited to our chose vocabulary)
+    def termcounts(self,abs_ser):
+        tc = Counter(' '.join(abs_ser).split())
+        arr = np.array([tc.get(k,0) for k in self.vocab])
+        return arr 
+
+    # calcualte Jensen Shannon Divergence of two probabability distributions
+    def jsd(self,p,q):
+        return entropy((p+q)/2.,base=2) - 0.5*entropy(p,base=2) - 0.5*entropy(q,base=2)
+
+    def calc_measures(self,word_dists):
+        ents = []
+        jsds = []
+        ent_difs = []
+        apnd = []
+        mx = len(word_dists)-(2*self.window-1)
+        for i in range(mx):
+            a = np.sum(word_dists[i:i+self.window],axis=0)
+            asm = float(a.sum())
+            if asm ==0:
+                enta = np.nan       
+            else:
+                a = a/asm
+                enta = entropy(a)
+            b = np.sum(word_dists[i+self.window:i+self.window*2],axis=0)
+            bsm = float(b.sum())
+            if bsm == 0:
+                entb = np.nan
+            else:
+                b = b/bsm
+                entb = entropy(b)
+
+            ents.append(enta)
+            if i+self.window>=mx:
+                apnd.append(entb)
+            
+            if asm==0 or bsm==0:
+                ent_difs.append(np.nan)
+                jsds.append(np.nan)
+            else:
+                ent_difs.append(entb-enta)
+                jsds.append(jsd(a,b))
+                    
+        return np.array(ents+apnd),np.array(ent_difs),np.array(jsds)
+            
+
+    def shuffler(self,idx):
+        token_seq = self.all_tokens.copy()
+        np.random.shuffle(token_seq)
+        idx = 0
+        shuffled_word_dists = np.zeros((25,len(self.vocab)))
+        for i,toke in enumerate(self.token_counts):
+            current = token_seq[idx:idx+toke]
+            unique, counts = np.unique(current, return_counts=True)
+            word_dist = np.zeros(len(self.vocab))
+            word_dist[unique] = counts
+            shuffled_word_dists[i] = word_dist
+            idx+=toke
+        return calc_measures(shuffled_word_dists)
         
-        if asm==0 or bsm==0:
-            ent_difs.append(np.nan)
-            jsds.append(np.nan)
-        else:
-            ent_difs.append(entb-enta)
-            jsds.append(jsd(a,b))
-                
-    return np.array(ents+apnd),np.array(ent_difs),np.array(jsds)
+    def parse_cat(self,fi):
+        df = pd.read_pickle(fi)
+        if len(df==0):
+            return 0
+        # generate word distributions 
+
+        cat_name = fi[fi.rfind('/')+1:-4]
+        word_dists = np.zeros((25,len(self.vocab)))
+        for year,grp in df.groupby('year'):
+            word_dists[year-1991] = termcounts(grp.abstract)
+
+        # total token count by year
+        self.token_counts = word_dists.sum(1,dtype=int)
+        # generate giant array of every token in data (for shuffling by null model)
+        combined_word_dist = word_dists.sum(0,dtype=int)
+        self.all_tokens = []
+        for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
+            self.all_tokens += [term]*cnt
+        self.all_tokens = np.array(self.all_tokens)
+
+        # calculate raw measures
+        ents,ent_difs,jsds = calc_measures(word_dists)
         
 
-def shuffler(idx,all_tokens,token_counts,window=1):
-    token_seq = all_tokens.copy()
-    np.random.shuffle(token_seq)
-    idx = 0
-    shuffled_word_dists = np.zeros((25,len(vocab)))
-    for i,toke in enumerate(token_counts):
-        current = token_seq[idx:idx+toke]
-        unique, counts = np.unique(current, return_counts=True)
-        word_dist = np.zeros(len(vocab))
-        word_dist[unique] = counts
-        shuffled_word_dists[i] = word_dist
-        idx+=toke
-    return calc_measures(shuffled_word_dists,window)
-    
-def parse_cat(fi,window=1):
-    df = pd.read_pickle(fi)
-    if len(df==0):
-        return 0
-    # generate word distributions 
-
-    cat_name = fi[fi.rfind('/')+1:-4]
-    word_dists = np.zeros((25,len(vocab)))
-    for year,grp in df.groupby('year'):
-        word_dists[year-1991] = termcounts(grp.abstract)
-
-    # total token count by year
-    token_counts = word_dists.sum(1,dtype=int)
-    # generate giant array of every token in data (for shuffling by null model)
-    combined_word_dist = word_dists.sum(0,dtype=int)
-    all_tokens = []
-    for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
-        all_tokens += [term]*cnt
-    all_tokens = np.array(all_tokens)
-
-    # calculate raw measures
-    ents,ent_difs,jsds = calc_measures(word_dists,window=window)
-    
-    #calculate null measures
-    # try:
-    #     pool.close()
-    # except:
-    #     pass
-    # pool = mp.Pool(procs)
-    #result = [r for r in tq(pool.imap_unordered(lambda x: shuffler(x,all_tokens,token_counts),range(args.null_bootstrap_samples),chunksize=args.null_bootstrap_samples/procs),total=args.null_bootstrap_samples)]
-    result = [shuffler(x,all_tokens,token_counts,window=window) for x in range(args.null_bootstrap_samples)]
-    
-    dist_path = '{}results/termdist_{}.npy'.format(args.output,cat_name)
-    if not os.path.exists(dist_path):
-        np.save(dist_path,word_dists)   
-    
-    with open('{}results/results_{}_{}'.format(args.output,window,cat_name),'w') as out:
+        result = [shuffler(x) for x in range(self.args.null_bootstrap_samples)]
         
-        for measure in ('ents','ent_difs','jsds'):
-            out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
-        for i,measure in enumerate(['entropy-null','entdif-null','jsd-null']):
-            samples = np.array([r[i] for r in result])
-            m = samples.mean(0)
-            ci = 1.96 * samples.std(0) / np.sqrt(args.null_bootstrap_samples)
-            out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
-            out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
-    return 1
+        dist_path = '{}results/termdist_{}.npy'.format(self.args.output,cat_name)
+        if not os.path.exists(dist_path):
+            np.save(dist_path,word_dists)   
+        
+        with open('{}results/results_{}_{}'.format(self.args.output,window,cat_name),'w') as out:
+            
+            for measure in ('ents','ent_difs','jsds'):
+                out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
+            for i,measure in enumerate(['entropy-null','entdif-null','jsd-null']):
+                samples = np.array([r[i] for r in result])
+                m = samples.mean(0)
+                ci = 1.96 * samples.std(0) / np.sqrt(self.args.null_bootstrap_samples)
+                out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
+                out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
+        return 1
 
-def go(window,files):
-    complete = 0
-    for fi,result  in tq(zip(files,pool.imap_unordered(lambda f: parse_cat(f,window=window),files)),total=len(files)):
-        cat = fi[fi.rfind('/')+1:-4]
-        if result == 0:
-            rootLogger.info('No data for category "{}"'.format(cat))
-        if result == 1:
-            rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat,window))
-        complete+=result
-    rootLogger.info('{} total categories processed for window size={}'.format(complete,window))
+
         
 # for cat in tq(all_cats):
 #     with timed("Processing category - {}".format(cat)):
@@ -216,4 +210,13 @@ if __name__=='__main__':
 
     files = glob.glob(args.datadir+'*.pkl')
     for w in window_range:
-        go(w,files)
+        complete = 0
+        processor = process(vocab=vocab,window=window,args=args,logger=rootLogger)
+        for fi,result  in tq(zip(files,pool.imap_unordered(processor.parse_cat,files)),total=len(files)):
+            cat = fi[fi.rfind('/')+1:-4]
+            if result == 0:
+                rootLogger.info('No data for category "{}"'.format(cat))
+            if result == 1:
+                rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat,window))
+            complete+=result
+        rootLogger.info('{} total categories processed for window size={}'.format(complete,window))
