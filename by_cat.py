@@ -139,12 +139,7 @@ class process(object):
                 out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
                 out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
         return 1
-
-
-        
-# for cat in tq(all_cats):
-#     with timed("Processing category - {}".format(cat)):
-#         parse_cat(cat,window=window)    
+ 
 
 if __name__=='__main__':
 
@@ -211,7 +206,7 @@ if __name__=='__main__':
     files = glob.glob(args.datadir+'*.pkl')
     for w in window_range:
         complete = 0
-        processor = process(vocab=vocab,window=window,args=args,logger=rootLogger)
+        processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
         for fi,result  in tq(zip(files,pool.imap_unordered(processor.parse_cat,files)),total=len(files)):
             cat = fi[fi.rfind('/')+1:-4]
             if result == 0:
