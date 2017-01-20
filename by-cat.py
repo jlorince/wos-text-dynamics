@@ -93,11 +93,13 @@ def shuffler(idx,all_tokens,token_counts,window=1):
         idx+=toke
     return calc_measures(shuffled_word_dists,window)
     
-def parse_cat(cat_name,window=1):
-    df = pd.read_pickle('{}by-cat/{}.pkl'.format(datadir,cat_name))
+def parse_cat(fi,window=1):
+    df = pd.read_pickle(fi)
     if len(df==0):
         return 0
     # generate word distributions 
+
+    cat_name = fi[fi.rfind('/')+1:-4]
     word_dists = np.zeros((25,len(vocab)))
     for year,grp in df.groupby('year'):
         word_dists[year-1991] = termcounts(grp.abstract)
@@ -123,11 +125,11 @@ def parse_cat(cat_name,window=1):
     #result = [r for r in tq(pool.imap_unordered(lambda x: shuffler(x,all_tokens,token_counts),range(bootstraps),chunksize=bootstraps/procs),total=bootstraps)]
     result = [shuffler(x,all_tokens,token_counts,window_size=window) for x in range(bootstraps)]
     
-    dist_path = '{}results/termdist_{}.npy'.format(datadir,cat_name)
+    dist_path = '{}results/termdist_{}.npy'.format(args.output,cat_name)
     if not os.path.exists(dist_path):
         np.save(dist_path,word_dists)   
     
-    with open('{}results/results_{}_{}'.format(datadir,window,cat_name),'w') as out:
+    with open('{}results/results_{}_{}'.format(args.output,window,cat_name),'w') as out:
         
         for measure in ('ents','ent_difs','jsds'):
             out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
