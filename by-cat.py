@@ -162,7 +162,7 @@ if __name__=='__main__':
     parser.add_argument("-l", "--logfile", help="prefix for logfile",type=str,default='')
     parser.add_argument("-o", "--output", help="output path for results",type=str,default='/backup/home/jared/storage/wos-text-dynamics-data/results/')
     parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=100)
-    parser.add_argument("-d", "--datadir",help="root input data directory",default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat',type=str)
+    parser.add_argument("-d", "--datadir",help="root input data directory",default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat/',type=str)
     #parse.add_argument("-c", "--cats", help="path to pickled field-level dataframes", default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat',type=str)
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
     args = parser.parse_args()
@@ -186,8 +186,10 @@ if __name__=='__main__':
     ### Vocabulary setup
     vocab_path = args.datadir+'vocab_pruned_'+str(args.vocab_thresh)
     if os.path.exists(vocab_path):
+        rootLogger.info('Loading existing vocab file')
         vocab = [line.strip() for line in codecs.open(vocab_path,encoding='utf8')]
     else:
+        rootLogger.info('Generating new vocab file')
         vocab_dict ={}
         for fpath in tq(glob.glob(args.datadir+'*.pkl')):
             df = pd.read_pickle(fpath)
@@ -199,7 +201,7 @@ if __name__=='__main__':
         stemmer = EnglishStemmer()
         stop = set(stopwords.words('english'))
         stop = stop.union([stemmer.stem(s) for s in stop])
-        pruned = raw_term_counts[raw_term_counts>=VOCAB_THRESH]
+        pruned = raw_term_counts[raw_term_counts>=args.vocab_thresh]
         vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
         rootLogger.info("Total vocab size= {}".format(len(vocab)))
 
