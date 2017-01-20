@@ -211,7 +211,7 @@ if __name__=='__main__':
     if '_' in args.window:
         start,end = map(int,args.window.split('_'))
         window_range = range(start,end+1) 
-    if ',' in args.window:
+    elif ',' in args.window:
         window_range = map(int,args.window.split(','))
     else:
         window_range = [int(args.window)]
