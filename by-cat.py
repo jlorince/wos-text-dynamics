@@ -205,7 +205,7 @@ if __name__=='__main__':
         vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
         rootLogger.info("Total vocab size= {}".format(len(vocab)))
 
-    pool = mp.Pool(procs)
+    pool = mp.Pool(args.procs)
     if '_' in args.window:
         start,end = map(int,args.window.split('_'))
         window_range = range(start,end+1) 
