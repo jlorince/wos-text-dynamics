@@ -8,22 +8,27 @@ from nltk.stem.snowball import EnglishStemmer
 from collections import Counter
 from pathos import multiprocessing as mp
 from functools import partial
+from __future__ import print_function
 
 
 import time,datetime
 class timed(object):
-    def __init__(self,desc='command',pad='',**kwargs):
+    def __init__(self,desc='command',logger=None,pad='',**kwargs):
         self.desc = desc
         self.kwargs = kwargs
         self.pad = pad
+        if logger is None:
+            self.log = print
+        else:
+            self.log = logger.info
     def __enter__(self):
         self.start = time.time()
-        print '{} started...'.format(self.desc)
+        self.log('{} started...'.format(self.desc))
     def __exit__(self, type, value, traceback):
         if len(self.kwargs)==0:
-            rootLogger.info('{}{} complete in {}{}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),self.pad))
+            self.log('{}{} complete in {}{}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),self.pad))
         else:
-            rootLogger.info('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad))
+            self.log('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad))
     
 class process(object):
 
@@ -54,32 +59,47 @@ class process(object):
         ent_difs = []
         apnd = []
         mx = len(word_dists)-(2*self.window-1)
+        self.result = []
         for i in range(mx):
-            a = np.sum(word_dists[i:i+self.window],axis=0)
-            asm = float(a.sum())
-            if asm ==0:
-                enta = np.nan       
-            else:
-                a = a/asm
-                enta = self.entropy(a)
-            b = np.sum(word_dists[i+self.window:i+self.window*2],axis=0)
-            bsm = float(b.sum())
-            if bsm == 0:
-                entb = np.nan
-            else:
-                b = b/bsm
-                entb = self.entropy(b)
+            with timed('Calc for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=self.logger):
+                a = np.sum(word_dists[i:i+self.window],axis=0)
+                asm = float(a.sum())
+                if asm ==0:
+                    enta = np.nan       
+                else:
+                    aprop = a/asm
+                    enta = self.entropy(aprop)
+                b = np.sum(word_dists[i+self.window:i+self.window*2],axis=0)
+                bsm = float(b.sum())
+                if bsm == 0:
+                    entb = np.nan
+                else:
+                    bprop = b/bsm
+                    entb = self.entropy(bprop)
 
-            ents.append(enta)
-            if i+self.window>=mx:
-                apnd.append(entb)
-            
-            if asm==0 or bsm==0:
-                ent_difs.append(np.nan)
-                jsds.append(np.nan)
-            else:
-                ent_difs.append(entb-enta)
-                jsds.append(self.jsd(a,b))
+                ents.append(enta)
+                if i+self.window>=mx:
+                    apnd.append(entb)
+                
+                if asm==0 or bsm==0:
+                    ent_difs.append(np.nan)
+                    jsds.append(np.nan)
+                    if self.args.null_model_mode == 'local':
+                        x = [(np.nan,np.nan) for _ in xrange(self.args.null_bootstrap_samples)]
+                        self.result.append([np.array(r) for r in zip(*x)])
+
+                else:
+                    ent_difs.append(entb-enta)
+                    jsds.append(self.jsd(aprop,bprop))
+                    if self.args.null_model_mode == 'local':
+                        with timed('Local null model for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=self.logger):
+                            combined_word_dist = (a+b).astype(int)
+                            self.all_tokens = []
+                            for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
+                                self.all_tokens += [term]*cnt
+                            self.all_tokens = np.array(self.all_tokens)
+                            x = [self.local_shuffler(int(asm)) for _ in xrange(self.args.null_bootstrap_samples)]
+                            self.result.append([np.array(r) for r in zip(*x)])
                     
         return np.array(ents+apnd),np.array(ent_difs),np.array(jsds)
             
@@ -97,56 +117,86 @@ class process(object):
             shuffled_word_dists[i] = word_dist
             idx+=toke
         return self.calc_measures(shuffled_word_dists)
+
+    def local_shuffler(self,token_count_a):
+        token_seq = self.all_tokens.copy()
+        np.random.shuffle(token_seq)
+        a,b = token_seq[:token_count_a],token_seq[token_count_a:]
+        shuffled_dists = []
+        for tokens in (a,b):
+            unique, counts = np.unique(tokens, return_counts=True)
+            word_dist = np.zeros(len(self.vocab))
+            word_dist[unique] = counts
+            shuffled_dists.append(word_dist)
+        a,b = shuffled_dists
+        enta = self.entropy(a)
+        entb = self.entropy(b)
+        return entb-enta,self.jsd(a,b)
+
         
     def parse_cat(self,fi):
+        self.cat = fi[fi.rfind('/')+1:-4]
+        with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=self.logger):
 
-        cat_name = fi[fi.rfind('/')+1:-4]
+            result_path = '{}results_{}_{}'.format(self.args.output,self.window,self.cat)
+            if os.path.exists(result_path):
+                self.logger.info('Category "{}" already done for window={}'.format(self.cat,self.window))
+                return 0
 
-        result_path = '{}results_{}_{}'.format(self.args.output,self.window,cat_name)
-        if os.path.exists(result_path):
-            rootLogger.info('Category "{}" already done for window={}'.format(cat_name,self.window))
-            return 0
+            df = pd.read_pickle(fi)
+            if len(df)==0:
+                self.logger.info('No data for category "{}"'.format(self.cat))
+                return 0
 
-        df = pd.read_pickle(fi)
-        if len(df)==0:
-            rootLogger.info('No data for category "{}"'.format(cat_name))
-            return 0
-        # generate word distributions 
+            # generate word distributions 
+            word_dists = np.zeros((25,len(self.vocab)))
+            for year,grp in df.groupby('year'):
+                word_dists[year-1991] = self.termcounts(grp.abstract)
 
-        word_dists = np.zeros((25,len(self.vocab)))
-        for year,grp in df.groupby('year'):
-            word_dists[year-1991] = self.termcounts(grp.abstract)
+            if self.args.null_model_mode == 'global':
 
-        # total token count by year
-        self.token_counts = word_dists.sum(1,dtype=int)
-        # generate giant array of every token in data (for shuffling by null model)
-        combined_word_dist = word_dists.sum(0,dtype=int)
-        self.all_tokens = []
-        for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
-            self.all_tokens += [term]*cnt
-        self.all_tokens = np.array(self.all_tokens)
+                with timed('Running null model for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                    # total token count by year
+                    self.token_counts = word_dists.sum(1,dtype=int)
+                    # generate giant array of every token in data (for shuffling by null model)
+                    combined_word_dist = word_dists.sum(0,dtype=int)
+                    self.all_tokens = []
+                    for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
+                        self.all_tokens += [term]*cnt
+                    self.all_tokens = np.array(self.all_tokens)
 
-        # calculate raw measures
-        ents,ent_difs,jsds = self.calc_measures(word_dists)
-        
+                    self.result = [self.shuffler(x) for x in range(self.args.null_bootstrap_samples)]
 
-        result = [self.shuffler(x) for x in range(self.args.null_bootstrap_samples)]
-        
-        dist_path = '{}termdist_{}.npy'.format(self.args.output,cat_name)
-        if not os.path.exists(dist_path):
-            np.save(dist_path,word_dists)   
-        
-        with open(result_path,'w') as out:
+            # calculate raw measures
+            with timed('Calculating raw measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                ents,ent_difs,jsds = self.calc_measures(word_dists)
             
-            for measure in ('ents','ent_difs','jsds'):
-                out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
-            for i,measure in enumerate(['entropy-null','entdif-null','jsd-null']):
-                samples = np.array([r[i] for r in result])
-                m = samples.mean(0)
-                ci = 1.96 * samples.std(0) / np.sqrt(self.args.null_bootstrap_samples)
-                out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
-                out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
-        rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat_name,self.window))
+            dist_path = '{}termdist_{}.npy'.format(self.args.output,self.cat)
+            if not os.path.exists(dist_path):
+                np.save(dist_path,word_dists)   
+            
+            with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                with open(result_path,'w') as out:
+                    
+                    for measure in ('ents','ent_difs','jsds'):
+                        out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
+                    if self.args.null_model_mode == 'global':
+                        for i,measure in enumerate(['entropy-null','entdif-null','jsd-null']):
+                            samples = np.array([r[i] for r in self.result])
+                            m = samples.mean(0)
+                            ci = 1.96 * samples.std(0) / np.sqrt(self.args.null_bootstrap_samples)
+                            out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
+                            out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
+                    elif self.args.null_model_mode == 'local':
+                        for i,measure in enumerate(['entdif-null','jsd-null']):
+                            samples = np.vstack([r[i] for r in self.result])
+                            m = samples.mean(1)
+                            ci = 1.96 * samples.std(1) / np.sqrt(self.args.null_bootstrap_samples)
+                            out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
+                            out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
+
+
+        #rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat_name,self.window))
         return 1
  
 
@@ -161,6 +211,8 @@ if __name__=='__main__':
     parser.add_argument("-d", "--datadir",help="root input data directory",default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat/',type=str)
     #parse.add_argument("-c", "--cats", help="path to pickled field-level dataframes", default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat',type=str)
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
+    parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='local',type=str)
+
     args = parser.parse_args()
 
     ### LOGGING SETUP
