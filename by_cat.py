@@ -1,3 +1,4 @@
+from __future__ import print_function
 import pandas as pd
 import numpy as np
 from scipy.stats import entropy as scipy_entropy
@@ -8,7 +9,6 @@ from nltk.stem.snowball import EnglishStemmer
 from collections import Counter
 from pathos import multiprocessing as mp
 from functools import partial
-from __future__ import print_function
 
 
 import time,datetime
