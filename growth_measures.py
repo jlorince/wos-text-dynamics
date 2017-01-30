@@ -46,7 +46,10 @@ def process_year(year):
 
             for i, row in merged.dropna(subset=['categories']).iterrows():
                 for cat in row.categories.split('|'):
-                   d_citations[row.year][cat] = d_citations[row.year].get(cat,0)+1
+                    try:
+                        d_citations[row.year][cat] = d_citations[row.year].get(cat,0)+1
+                    except KeyError:
+                        continue
             
         with timed('Getting author counts (year={})'.format(year)):
             merged = cats_current.merge(authors_current)
