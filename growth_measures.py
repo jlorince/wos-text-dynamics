@@ -62,7 +62,7 @@ def process_year(year):
                         d_authors[cat] = set(row.author_ids.split('|'))
 
             total_authors = len(set.union(*d_authors.values()))
-            d_authors = {v:sum(k) for v,k in d_authors.iteritems()}
+            d_authors = {v:len(k) for v,k in d_authors.iteritems()}
 
         return d_pubs,d_citations,d_authors,total_pubs,total_citations,total_authors
 
