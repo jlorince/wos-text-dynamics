@@ -90,3 +90,4 @@ ENV/
 
 # custom
 *.log
+server_credentials.txt
