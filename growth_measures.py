@@ -40,7 +40,7 @@ def process_year(year):
         
         with timed('Getting citation counts (year={})'.format(year)):
             citations_current['citing_papers'] = citations_current['citing_papers'].apply(lambda x: len(x.split('|')))
-            total_citations = citations_current.citing_papers.sum()
+            total_citations = citations_current.groupby('year').citing_papers.sum().reindex(all_years,fill_value=0).values
             
             merged = cats_current.merge(citations_current)
 
@@ -71,6 +71,10 @@ if __name__=='__main__':
     pool = mp.Pool(25)
     with timed('Parallel processing'):
         d_pubs,d_citations,d_authors,total_pubs,total_citations,total_authors = zip(*pool.map(process_year,all_years)) #zip(*[process_year(y) for y in (1991,1992)])#
+    try:
+        pool.close()
+    except:
+        pass
     
     with timed('Buidling final dictionaries'):
         d_pubs_final = dict(zip(all_years,d_pubs))
@@ -80,6 +84,8 @@ if __name__=='__main__':
             for year in d:
                 for cat in d[year]:
                     d_citations_final[year][cat] = d_citations_final[year].get(cat,0)+d[year][cat]
+
+        total_citations = np.vstack(total_citations).sum(0)
 
     ddir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/'
     with timed('finalizing dataframes'):
