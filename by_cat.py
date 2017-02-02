@@ -1,4 +1,3 @@
-from __future__ import print_function
 import pandas as pd
 import numpy as np
 from scipy.stats import entropy as scipy_entropy
@@ -311,5 +310,5 @@ if __name__=='__main__':
     for w in window_range:
         complete = 0
         processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
-        pool.map(processor.parse_cat,files,chunksize=len(files)/args.procs)
+        pool.map(processor.parse_cat,files,chunksize=len(files)//args.procs)
 
