@@ -124,7 +124,7 @@ if __name__=='__main__':
 
     #pool.map(wrapper,files)
     with open('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/parsed/parse_log','w') as out:
-        for result in  in tq(pool.imap_unordered(wrapper,files),total=len(files)):
+        for result in tq(pool.imap_unordered(wrapper,files),total=len(files)):
             out.write('\t'.join(map(str,result))+'\n')
         
 
