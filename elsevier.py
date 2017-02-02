@@ -4,6 +4,8 @@ from tqdm import tqdm as tq
 from lxml import etree
 import numpy as np
 from nltk.stem.snowball import EnglishStemmer
+from nltk.tokenize import word_tokenize
+import pathos.multiprocessing as mp
 stemmer = EnglishStemmer()
 
 
@@ -47,7 +49,7 @@ class xml_parser(object):
         l=0
 
         ## Check for raw text
-        for rawtext in tree.findall('.//{*}raw-text',namespaces=namespaces):
+        for rawtext in tree.findall('.//{*}raw-text'):
             if rawtext.text:
                 t = rawtext.text.strip()
                 if t:
@@ -59,7 +61,7 @@ class xml_parser(object):
 
         ## Get abstract, ONLY IF WE DID NOT GET RAW TEXT (which should include abstract already)
         if not found_rawtext:
-            for abstract in tree.findall('.//{*}abstract',namespaces=namespaces):
+            for abstract in tree.findall('.//{*}abstract'):
                 for node in abstract.iter('*'):
                     if node.text:
                         t = node.text.strip()
@@ -71,7 +73,7 @@ class xml_parser(object):
             l = len(all_text)
 
         ## Check for formatted text
-        for body in tree.findall('.//{*}body',namespaces=namespaces):
+        for body in tree.findall('.//{*}body'):
             for node in body.iter('*'):
                 if node.text:
                     t = node.text.strip()
@@ -82,9 +84,8 @@ class xml_parser(object):
             found_formatted_text = True
         l = len(all_text)
 
-
-
-        self.words  = np.array(' '.join(all_text).split())
+        #self.words  = np.array(' '.join(all_text).split())
+        self.words  = np.array(word_tokenize(' '.join(all_text)))
 
         self.logger.info("{}: Raw XML processed -- abstract={:d},formatted_text={:d},rawtext={:d} -- wordcount={}".format(
                         self.paper_id,found_abstract,found_formatted_text,found_rawtext,len(self.words)))
@@ -92,8 +93,8 @@ class xml_parser(object):
 
     def parse_rawtext(self):
 
-        # handle hyphenated terms
-        indices = np.where((np.char.endswith(self.words,'-'))&(self.words!='-'))[0]
+        # handle hyphenated terms (ignoring last term)
+        indices = np.where((np.char.endswith(self.words[:-1],'-'))&(self.words[:-1]!='-'))[0]
         dehyphenated = [a[:-1]+b for a,b in zip(self.words[indices],self.words[indices+1])]
         self.words[indices] = dehyphenated
         self.words = np.delete(self.words,indices+1)
@@ -102,8 +103,9 @@ class xml_parser(object):
         translator = str.maketrans('', '', string.punctuation)
         self.words = np.char.lower(np.char.translate(self.words,translator,string.punctuation))
 
-        # remove all self.words that are purely numeric
-        self.words = self.words[~np.char.isnumeric(self.words)]
+        # remove all words that are purely alpha[are purely numeric]
+        #self.words = self.words[~np.char.isnumeric(self.words)]
+        self.words = self.words[np.char.isaplha(self.words)]
 
         # apply stemming
         self.words = [stemmer.stem(w) for w in self.words]
@@ -135,9 +137,9 @@ if __name__=='__main__':
     fileHandler = logging.FileHandler(log_filename)
     fileHandler.setFormatter(logFormatter)
     rootLogger.addHandler(fileHandler)
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(consoleHandler)
+    #consoleHandler = logging.StreamHandler()
+    #consoleHandler.setFormatter(logFormatter)
+    #rootLogger.addHandler(consoleHandler)
     rootLogger.setLevel(logging.INFO)
 
     ddir = '/backup/home/jared/storage/elsevier/raw/matched/'
@@ -153,7 +155,9 @@ if __name__=='__main__':
     pool = mp.Pool(procs)
     chunksize = len(files)//procs
 
-    pool.map(wrapper,files)
+    #pool.map(wrapper,files)
+    for _ in tq(pool.imap_unordered(wrapper,files),total=len(files)):
+        pass
 
 
 """

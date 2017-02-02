@@ -148,32 +148,45 @@ class process(object):
                 self.logger.info('No data for category "{}"'.format(self.cat))
                 return 0
 
-            # generate word distributions 
-            word_dists = np.zeros((25,len(self.vocab)))
-            for year,grp in df.groupby('year'):
-                word_dists[year-1991] = self.termcounts(grp.abstract)
+            if self.args.null_model_mode in ('global','local'):
+                # generate word distributions 
+                word_dists = np.zeros((25,len(self.vocab)))
+                for year,grp in df.groupby('year'):
+                    word_dists[year-1991] = self.termcounts(grp.abstract)
 
-            if self.args.null_model_mode == 'global':
+                if self.args.null_model_mode == 'global':
 
-                with timed('Running null model for {} (window={})'.format(self.cat,self.window),logger=self.logger):
-                    # total token count by year
-                    self.token_counts = word_dists.sum(1,dtype=int)
-                    # generate giant array of every token in data (for shuffling by null model)
-                    combined_word_dist = word_dists.sum(0,dtype=int)
-                    self.all_tokens = []
-                    for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
-                        self.all_tokens += [term]*cnt
-                    self.all_tokens = np.array(self.all_tokens)
+                    with timed('Running null model for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                        # total token count by year
+                        self.token_counts = word_dists.sum(1,dtype=int)
+                        # generate giant array of every token in data (for shuffling by null model)
+                        combined_word_dist = word_dists.sum(0,dtype=int)
+                        self.all_tokens = []
+                        for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
+                            self.all_tokens += [term]*cnt
+                        self.all_tokens = np.array(self.all_tokens)
 
-                    self.result = [self.shuffler(x) for x in range(self.args.null_bootstrap_samples)]
+                        self.result = [self.shuffler(x) for x in range(self.args.null_bootstrap_samples)]
 
-            # calculate raw measures
-            with timed('Calculating raw measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
-                ents,ent_difs,jsds = self.calc_measures(word_dists)
+                # calculate raw measures
+                with timed('Calculating raw measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                    ents,ent_difs,jsds = self.calc_measures(word_dists)
             
-            dist_path = '{}termdist_{}.npy'.format(self.args.output,self.cat)
-            if not os.path.exists(dist_path):
-                np.save(dist_path,word_dists)   
+                dist_path = '{}termdist_{}.npy'.format(self.args.output,self.cat)
+                if not os.path.exists(dist_path):
+                    np.save(dist_path,word_dists)   
+
+            elif self.args.null_model_mode == 'fixed':
+                sample_size = int(round(df.year.value_counts().min()))
+                self.logger.info('Fixed sample size for category {} = {} papers'.format(self.cat,sample_size))
+                for _ in range(self.args.null_bootstrap_samples):
+                    sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))
+                    # generate word distributions 
+                    word_dists = np.zeros((25,len(self.vocab)))
+                    for year,grp in sampled.groupby('year'):
+                        word_dists[year-1991] = self.termcounts(grp.abstract)
+
+
             
             with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=self.logger):
                 with open(result_path,'w') as out:
@@ -211,7 +224,10 @@ if __name__=='__main__':
     parser.add_argument("-d", "--datadir",help="root input data directory",default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat/',type=str)
     #parse.add_argument("-c", "--cats", help="path to pickled field-level dataframes", default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat',type=str)
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
-    parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='local',type=str)
+    parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='local',type=str,choices=['global','local','fixed'])
+    parser.add_argument("-r", "--min_prop",help='pRoportion of year with least publications to establish fixed sample size ',default=0.5,type=float)
+
+
 
     args = parser.parse_args()
 
