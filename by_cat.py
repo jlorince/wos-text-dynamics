@@ -309,6 +309,9 @@ if __name__=='__main__':
     files = glob.glob(args.datadir+'*.pkl')
     for w in window_range:
         complete = 0
-        processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
-        pool.map(processor.parse_cat,files,chunksize=len(files)//args.procs)
+        def wrapper(fi):
+            processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
+            processor.parse_cat(fi)
+        #pool.map(processor.parse_cat,files,chunksize=len(files)//args.procs)
+        pool.map(wrapper,files,chunksize=len(files)//args.procs)
 
