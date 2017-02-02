@@ -177,36 +177,63 @@ class process(object):
                     np.save(dist_path,word_dists)   
 
             elif self.args.null_model_mode == 'fixed':
-                sample_size = int(round(df.year.value_counts().min()))
-                self.logger.info('Fixed sample size for category {} = {} papers'.format(self.cat,sample_size))
-                for _ in range(self.args.null_bootstrap_samples):
-                    sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))
-                    # generate word distributions 
-                    word_dists = np.zeros((25,len(self.vocab)))
-                    for year,grp in sampled.groupby('year'):
-                        word_dists[year-1991] = self.termcounts(grp.abstract)
+
+                ent_result = []
+                ent_dif_result = []
+                jsd_result = []
+
+                with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                    sample_size = int(round(df.year.value_counts().min()))
+                    self.logger.info('Fixed sample size for category {} = {} papers'.format(self.cat,sample_size))
+                    for i in range(self.args.null_bootstrap_samples):
+                        sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))
+                        # generate word distributions 
+                        word_dists = np.zeros((25,len(self.vocab)))
+                        for year,grp in sampled.groupby('year'):
+                            word_dists[year-1991] = self.termcounts(grp.abstract)
+                        ents,ent_difs,jsds = self.calc_measures(word_dists)
+                        ent_result.append(ents)
+                        ent_dif_result.append(ent_difs)
+                        jsd_result.append(jsds)
+
+
 
 
             
             with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=self.logger):
                 with open(result_path,'w') as out:
-                    
-                    for measure in ('ents','ent_difs','jsds'):
-                        out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
-                    if self.args.null_model_mode == 'global':
-                        for i,measure in enumerate(['entropy-null','entdif-null','jsd-null']):
-                            samples = np.array([r[i] for r in self.result])
-                            m = samples.mean(0)
-                            ci = 1.96 * samples.std(0) / np.sqrt(self.args.null_bootstrap_samples)
-                            out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
-                            out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
-                    elif self.args.null_model_mode == 'local':
-                        for i,measure in enumerate(['entdif-null','jsd-null']):
-                            samples = np.vstack([r[i] for r in self.result])
-                            m = samples.mean(1)
-                            ci = 1.96 * samples.std(1) / np.sqrt(self.args.null_bootstrap_samples)
-                            out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
-                            out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
+
+                    if self.args.null_model_mode=='fixed':
+                        ent_result = np.vstack(ent_result)
+                        ent_dif_result = np.vstack(ent_dif_result)
+                        jsd_result = np.vstack(jsd_result)
+
+                        for measure,data in zip(('ent','ent_dif','jsd'),(ent_result,ent_dif_result,jsd_result)):
+                            m = data.mean(0)
+                            ci = 1.96 * data.strd(0) / np.sqrt(self.args.null_bootstrap_samples)
+                            out.write("{}_m\t{}\n".format(measure,','.join(m.astype(str))))
+                            out.write("{}_c\t{}\n".format(measure,','.join(ci.astype(str))))
+
+                    else:
+                        
+                        for measure in ('ents','ent_difs','jsds'):
+                            out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
+                        
+                        if self.args.null_model_mode == 'global':
+                            for i,measure in enumerate(['entropy-null','entdif-null','jsd-null']):
+                                samples = np.array([r[i] for r in self.result])
+                                m = samples.mean(0)
+                                ci = 1.96 * samples.std(0) / np.sqrt(self.args.null_bootstrap_samples)
+                                out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
+                                out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
+                        
+                        elif self.args.null_model_mode == 'local':
+                            for i,measure in enumerate(['entdif-null','jsd-null']):
+                                samples = np.vstack([r[i] for r in self.result])
+                                m = samples.mean(1)
+                                ci = 1.96 * samples.std(1) / np.sqrt(self.args.null_bootstrap_samples)
+                                out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
+                                out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
 
 
         #rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat_name,self.window))
