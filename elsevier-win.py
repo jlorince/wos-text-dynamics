@@ -109,7 +109,7 @@ def wrapper(filename):
     else:
         parsed_length = 0
 
-    return found_abstract,found_formatted_text,found_rawtext,rawtext_length,parsed_length
+    return paper_id,int(found_abstract),int(found_formatted_text),int(found_rawtext),rawtext_length,parsed_length
 
 
 
