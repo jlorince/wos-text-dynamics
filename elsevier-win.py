@@ -104,7 +104,7 @@ def wrapper(filename):
     if rawtext_length>0:
         parsed = parse_rawtext(rawtext)
         parsed_length = len(parsed)
-        with open(outdir+paper_id,'w') as fout:
+        with open(outdir+paper_id,'w',encoding='utf8') as fout:
             fout.write(' '.join(parsed)+'\n')
     else:
         parsed_length = 0
