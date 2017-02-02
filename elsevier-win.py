@@ -104,10 +104,11 @@ def wrapper(filename):
     if rawtext_length>0:
         parsed = parse_rawtext(rawtext)
         parsed_length = len(parsed)
+        with open(outdir+paper_id,'w') as fout:
+            fout.write(' '.join(parsed)+'\n')
     else:
         parsed_length = 0
-    with open(outdir+paper_id,'w') as fout:
-        fout.write(' '.join(parsed)+'\n')
+
     return found_abstract,found_formatted_text,found_rawtext,rawtext_length,parsed_length
 
 
