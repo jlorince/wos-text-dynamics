@@ -1,5 +1,5 @@
 #import pymssql
-import gzip,codecs,time,datetime,glob,logging,string
+import gzip,codecs,time,datetime,glob,logging,string,os
 from tqdm import tqdm as tq
 from lxml import etree
 import numpy as np
@@ -102,14 +102,16 @@ def parse_rawtext(words):
 
 def wrapper(filename):
     paper_id = filename[filename.rfind('\\')+1:]
+    if os.path.exists(outdir+'stemmed/'+paper_id) and os.path.exists(outdir+'raw/'+paper_id):
+        return None
     rawtext,found_abstract,found_formatted_text,found_rawtext = parse_xml(filename)
     rawtext_length = len(rawtext)
     if rawtext_length>0:
         parsed,parsed_stemmed = parse_rawtext(rawtext)
         parsed_length = len(parsed)
-        with open(outdir+'stemmed/'+paper_id,'w',encoding='utf8') as fout:
+        with open(outdir+'stemmed/matched/'+paper_id,'w',encoding='utf8') as fout:
             fout.write(' '.join(parsed_stemmed)+'\n')
-        with open(outdir+'raw/'+paper_id,'w',encoding='utf8') as fout:
+        with open(outdir+'raw/matched/'+paper_id,'w',encoding='utf8') as fout:
             fout.write(' '.join(parsed)+'\n')
     else:
         parsed_length = 0
@@ -129,9 +131,10 @@ if __name__=='__main__':
     chunksize = len(files)//procs
 
     #pool.map(wrapper,files)
-    with open('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/parse_log','w') as out:
+    with open('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/parse_log','a') as out:
         for result in tq(pool.imap_unordered(wrapper,files),total=len(files)):
-            out.write('\t'.join(map(str,result))+'\n')
+            if result is not None:
+                out.write('\t'.join(map(str,result))+'\n')
         
 
 
