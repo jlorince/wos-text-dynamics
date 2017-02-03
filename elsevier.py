@@ -199,6 +199,47 @@ cursor.close()
 conn.close()
 """
 
+# FIZING DUPLICATE MATCHES
+import pymssql,os,gzip,codecs
+from tqdm import tqdm as tq
+ddir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/xml/'
+total_lines=7775842
+total_el_recs=12101870
+
+### Server setup
+server,user,password = [line.strip() for line in open('server_credentials.txt')]
+conn = pymssql.connect(server, user, password, "tempdb")
+cursor = conn.cursor()
+
+id_dict2 = {}
+with gzip.open('data/SD_WoS_id_match.txt.gz') as id_file:
+    for line in tq(id_file,total=total_lines):
+        k,v = line.strip().split()
+        id_dict2[int(k)] = id_dict2.get(int(k),[])+[v]
+all_dubz = []
+all_dub_k = []
+for k,v in tq(id_dict2.iteritems()):
+    if len(v)>1:
+        all_dubz += v
+        all_dub_k.append(k)
+for uid in tq(all_dubz):
+    try:
+        os.remove(ddir+'matched/{}'.format(uid))
+    except:
+        continue
+
+for k in tq(all_dub_k):
+    cursor.execute("SELECT FileID, PaperContent FROM [Papers].[dbo].[Papers] where FileID={}".format(k))
+    el_id,text = cursor.fetchone()
+    with codecs.open(ddir+'ambig/'+str(el_id),'w',encoding='utf8') as out:
+        out.write(text+'\n')
+cursor.close()
+conn.close()
+
+
+
+
+
 
 
 

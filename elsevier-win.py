@@ -11,12 +11,9 @@ stemmer = EnglishStemmer()
 
 ddir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/xml/matched/'
 
-mode = 'stem' # 'raw'
 
-if mode =='stem':
-    outdir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/stemmed/matched/'
-elif mode =='raw':
-    outdir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/raw/matched/'
+outdir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/'
+
 
 
 class timed(object):
@@ -99,19 +96,20 @@ def parse_rawtext(words):
     words = words[np.char.isalpha(words)]
 
     # apply stemming
-    if mode == 'stem':
-        words = [stemmer.stem(w) for w in words]
+    words_stemmed = [stemmer.stem(w) for w in words]
 
-    return words
+    return words,words_stemmed
 
 def wrapper(filename):
     paper_id = filename[filename.rfind('\\')+1:]
     rawtext,found_abstract,found_formatted_text,found_rawtext = parse_xml(filename)
     rawtext_length = len(rawtext)
     if rawtext_length>0:
-        parsed = parse_rawtext(rawtext)
+        parsed,parsed_stemmed = parse_rawtext(rawtext)
         parsed_length = len(parsed)
-        with open(outdir+paper_id,'w',encoding='utf8') as fout:
+        with open(outdir+'stemmed/'+paper_id,'w',encoding='utf8') as fout:
+            fout.write(' '.join(parsed_stemmed)+'\n')
+        with open(outdir+'raw/'+paper_id,'w',encoding='utf8') as fout:
             fout.write(' '.join(parsed)+'\n')
     else:
         parsed_length = 0
