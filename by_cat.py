@@ -316,5 +316,6 @@ if __name__=='__main__':
         #         processor.parse_cat(fi)
         #     return wrapper
         # wrapper = gen_wrapper(vocab,w,args,rootLogger)
+        processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
         pool.map(processor.parse_cat,files,chunksize=len(files)//args.procs)
 
