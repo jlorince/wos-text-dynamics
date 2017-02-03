@@ -183,7 +183,7 @@ class process(object):
                 jsd_result = []
 
                 with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
-                    sample_size = int(round(df.year.value_counts().min()))
+                    sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
                     self.logger.info('Fixed sample size for category {} = {} papers'.format(self.cat,sample_size))
                     for i in range(self.args.null_bootstrap_samples):
                         sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))

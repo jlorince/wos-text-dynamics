@@ -9,8 +9,14 @@ import multiprocessing as mp
 stemmer = EnglishStemmer()
 
 
-ddir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/raw/matched/'
-outdir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/parsed/matched/'
+ddir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/xml/matched/'
+
+mode = 'stem' # 'raw'
+
+if mode =='stem':
+    outdir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/parsed/matched/'
+elif mode =='raw':
+    outdir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/parsed/matched/'
 
 
 class timed(object):
