@@ -1,3 +1,4 @@
+from __future__ import print_function
 import pandas as pd
 import numpy as np
 from scipy.stats import entropy as scipy_entropy
@@ -6,7 +7,7 @@ from tqdm import tqdm as tq
 from nltk.corpus import stopwords
 from nltk.stem.snowball import EnglishStemmer
 from collections import Counter
-from pathos import multiprocessing as mp
+import pathos.multiprocessing as mp
 from functools import partial
 
 
@@ -308,13 +309,12 @@ if __name__=='__main__':
 
     files = glob.glob(args.datadir+'*.pkl')
     for w in window_range:
-        complete = 0
-        def gen_wrapper(vocab,w,args,rootLogger):
-            def wrapper(fi):
-                processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
-                processor.parse_cat(fi)
-            return wrapper
-        wrapper = gen_wrapper(vocab,w,args,rootLogger)
-        #pool.map(processor.parse_cat,files,chunksize=len(files)//args.procs)
-        pool.map(wrapper,files,chunksize=len(files)//args.procs)
+        # complete = 0
+        # def gen_wrapper(vocab,w,args,rootLogger):
+        #     def wrapper(fi):
+        #         processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
+        #         processor.parse_cat(fi)
+        #     return wrapper
+        # wrapper = gen_wrapper(vocab,w,args,rootLogger)
+        pool.map(processor.parse_cat,files,chunksize=len(files)//args.procs)
 
