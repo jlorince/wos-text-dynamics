@@ -61,46 +61,46 @@ class process(object):
         mx = len(word_dists)-(2*self.window-1)
         self.result = []
         for i in range(mx):
-            with timed('Calc for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=self.logger):
-                a = np.sum(word_dists[i:i+self.window],axis=0)
-                asm = float(a.sum())
-                if asm ==0:
-                    enta = np.nan       
-                else:
-                    aprop = a/asm
-                    enta = self.entropy(aprop)
-                b = np.sum(word_dists[i+self.window:i+self.window*2],axis=0)
-                bsm = float(b.sum())
-                if bsm == 0:
-                    entb = np.nan
-                else:
-                    bprop = b/bsm
-                    entb = self.entropy(bprop)
+            #with timed('Calc for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=self.logger):
+            a = np.sum(word_dists[i:i+self.window],axis=0)
+            asm = float(a.sum())
+            if asm ==0:
+                enta = np.nan       
+            else:
+                aprop = a/asm
+                enta = self.entropy(aprop)
+            b = np.sum(word_dists[i+self.window:i+self.window*2],axis=0)
+            bsm = float(b.sum())
+            if bsm == 0:
+                entb = np.nan
+            else:
+                bprop = b/bsm
+                entb = self.entropy(bprop)
 
-                ents.append(enta)
-                if i+self.window>=mx:
-                    apnd.append(entb)
-                
-                if asm==0 or bsm==0:
-                    ent_difs.append(np.nan)
-                    jsds.append(np.nan)
-                    if self.args.null_model_mode == 'local':
-                        x = [(np.nan,np.nan) for _ in xrange(self.args.null_bootstrap_samples)]
+            ents.append(enta)
+            if i+self.window>=mx:
+                apnd.append(entb)
+            
+            if asm==0 or bsm==0:
+                ent_difs.append(np.nan)
+                jsds.append(np.nan)
+                if self.args.null_model_mode == 'local':
+                    x = [(np.nan,np.nan) for _ in xrange(self.args.null_bootstrap_samples)]
+                    self.result.append([np.array(r) for r in zip(*x)])
+
+            else:
+                ent_difs.append(entb-enta)
+                jsds.append(self.jsd(aprop,bprop))
+                if self.args.null_model_mode == 'local':
+                    with timed('Local null model for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=self.logger):
+                        combined_word_dist = (a+b).astype(int)
+                        self.all_tokens = []
+                        for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
+                            self.all_tokens += [term]*cnt
+                        self.all_tokens = np.array(self.all_tokens)
+                        x = [self.local_shuffler(int(asm)) for _ in xrange(self.args.null_bootstrap_samples)]
                         self.result.append([np.array(r) for r in zip(*x)])
-
-                else:
-                    ent_difs.append(entb-enta)
-                    jsds.append(self.jsd(aprop,bprop))
-                    if self.args.null_model_mode == 'local':
-                        with timed('Local null model for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=self.logger):
-                            combined_word_dist = (a+b).astype(int)
-                            self.all_tokens = []
-                            for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
-                                self.all_tokens += [term]*cnt
-                            self.all_tokens = np.array(self.all_tokens)
-                            x = [self.local_shuffler(int(asm)) for _ in xrange(self.args.null_bootstrap_samples)]
-                            self.result.append([np.array(r) for r in zip(*x)])
-                    
+                
         return np.array(ents+apnd),np.array(ent_difs),np.array(jsds)
             
 
@@ -210,7 +210,7 @@ class process(object):
 
                         for measure,data in zip(('ent','ent_dif','jsd'),(ent_result,ent_dif_result,jsd_result)):
                             m = data.mean(0)
-                            ci = 1.96 * data.strd(0) / np.sqrt(self.args.null_bootstrap_samples)
+                            ci = 1.96 * data.std(0) / np.sqrt(self.args.null_bootstrap_samples)
                             out.write("{}_m\t{}\n".format(measure,','.join(m.astype(str))))
                             out.write("{}_c\t{}\n".format(measure,','.join(ci.astype(str))))
 
