@@ -14,9 +14,9 @@ ddir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/xml/ma
 mode = 'stem' # 'raw'
 
 if mode =='stem':
-    outdir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/parsed/matched/'
+    outdir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/stemmed/matched/'
 elif mode =='raw':
-    outdir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/parsed/matched/'
+    outdir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/raw/matched/'
 
 
 class timed(object):
@@ -99,7 +99,8 @@ def parse_rawtext(words):
     words = words[np.char.isalpha(words)]
 
     # apply stemming
-    words = [stemmer.stem(w) for w in words]
+    if mode == 'stem':
+        words = [stemmer.stem(w) for w in words]
 
     return words
 
