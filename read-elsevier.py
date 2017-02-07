@@ -92,6 +92,7 @@ def parse_xml(text):
 if __name__=='__main__':
 
     procs = mp.cpu_count()
+    pool = mp.Pool(procs)
 
     conn = pymssql.connect(server, user, password, "tempdb")
     cursor = conn.cursor()
