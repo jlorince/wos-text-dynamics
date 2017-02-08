@@ -56,7 +56,7 @@ def process(input_tuple):
                     s = "Idx {}: {}/{} ({:2f}%) records processed".format(idx,i,total,100*(i/total))
                     print(s)
                     log.write(s+'\n')
-                    log.flush(s)
+                    log.flush()
         s = "Idx {}: {}/{} ({:2f}%) records processed\n".format(idx,i,total,100*(i/total))
         print(s)
         log.write(s+'\n')
