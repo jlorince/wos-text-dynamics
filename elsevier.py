@@ -161,7 +161,9 @@ if __name__=='__main__':
 
 
 """
-## just the dump code I wrote to (slooooooowly) get elsevier data off the DB
+###
+THIS ALL NEEDS TO BE FIXED TO HANDLE DUPLICATE MATCHES BETTER!!!
+###
 ddir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/raw/'
 total_lines=7775842
 total_el_recs=12101870
@@ -218,7 +220,7 @@ with gzip.open('data/SD_WoS_id_match.txt.gz') as id_file:
         id_dict2[int(k)] = id_dict2.get(int(k),[])+[v]
 all_dubz = []
 all_dub_k = []
-for k,v in tq(id_dict2.iteritems()):
+for k,v in tq(id_dict2.items()):
     if len(v)>1:
         all_dubz += v
         all_dub_k.append(k)
@@ -237,8 +239,33 @@ cursor.close()
 conn.close()
 
 
+new = {}
+for k,v in tq(id_dict2.items()):
+    if len(v)==1:
+        new[v[0]] = new.get(v[0],[])+[k]
+#new2 = {k:v for k,v in new.items() if len(v)>1}
 
+server,user,password = [line.strip() for line in open('server_credentials.txt')]
+conn = pymssql.connect(server, user, password, "tempdb")
+cursor = conn.cursor()
+ddir = 'S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/elsevier/xml/'
+problems = {k:v for k,v in tq(new.items()) if len(v)>1}
+to_get = []
+for k,v in tq(problems.items()):
+    to_get += v
+    try:
+        os.remove(ddir+'matched/{}'.format(k.decode('utf8')))
+    except:
+        continue
+    
 
+for k in tq(to_get):
+    cursor.execute("SELECT FileID, PaperContent FROM [Papers].[dbo].[Papers] where FileID={}".format(k))
+    el_id,text = cursor.fetchone()
+    with codecs.open(ddir+'ambig/'+str(el_id),'w',encoding='utf8') as out:
+        out.write(text+'\n')
+cursor.close()
+conn.close()
 
 
 
