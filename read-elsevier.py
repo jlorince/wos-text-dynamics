@@ -41,7 +41,8 @@ def process(input_tuple):
     with timed('Processing idx {}'.format(idx)):
         with gzip.open("{}metadata_{}".format(ddir,idx),'w') as meta_out,\
              gzip.open("{}matched/text_{}".format(ddir,idx),'w') as matched_out,\
-             gzip.open("{}unmatched/text_{}".format(ddir,idx),'w') as unmatched_out:
+             gzip.open("{}unmatched/text_{}".format(ddir,idx),'w') as unmatched_out,\
+             open("{}log_{}".format(ddir,idx),'w') as log:
             for i,(FileID,PaperContent) in enumerate(cursor,1):
                 rawtext,found_abstract,found_formatted_text,found_rawtext = parse_xml(PaperContent)
                 wos_id = id_dict.get(FileID,'')
@@ -52,7 +53,14 @@ def process(input_tuple):
                 meta_out.write("{}\t{}\t{}\t{}\t{}\n".format(FileID,wos_id,int(found_abstract),int(found_formatted_text),int(found_rawtext)).encode('utf8'))
                 
                 if i%1000==0:
-                    print("Idx {}: {}/{} ({:2f}%) records processed".format(idx,i,total,100*(i/total)))
+                    s = "Idx {}: {}/{} ({:2f}%) records processed".format(idx,i,total,100*(i/total))
+                    print(s)
+                    log.write(s+'\n')
+                    log.flush(s)
+        s = "Idx {}: {}/{} ({:2f}%) records processed\n".format(idx,i,total,100*(i/total))
+        print(s)
+        log.write(s+'\n')
+        log.flush()
         cursor.close()
         conn.close()
 
