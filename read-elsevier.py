@@ -1,4 +1,4 @@
-import gzip,codecs,time,datetime,glob,logging,string,os,pymssql
+import gzip,codecs,time,datetime,glob,logging,string,os,pymssql,sys
 from tqdm import tqdm as tq
 from lxml import etree
 from nltk.tokenize import word_tokenize
@@ -117,7 +117,10 @@ def parse_xml(text):
 
 if __name__=='__main__':
 
-    procs = 60 #mp.cpu_count()
+    if len(sys.argv>1):
+        procs = int(sys.argv[1])
+    else:
+        procs = mp.cpu_count()
     pool = mp.Pool(procs)
 
     with timed('Building chunks'):
