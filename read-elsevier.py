@@ -4,6 +4,7 @@ from lxml import etree
 from nltk.tokenize import word_tokenize
 import multiprocessing as mp
 import numpy as np
+import pandas as pd
 
 server,user,password = [line.strip() for line in open('server_credentials.txt')]
 ddir = "P:/Projects/WoS/wos-text-dynamics-data/elsevier/raw/"
