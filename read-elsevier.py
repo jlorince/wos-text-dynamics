@@ -112,16 +112,18 @@ if __name__=='__main__':
     procs = 60 #mp.cpu_count()
     pool = mp.Pool(procs)
 
-    conn = pymssql.connect(server, user, password, "tempdb")
-    cursor = conn.cursor()
-    cursor.execute("SELECT FileID from [Papers].[dbo].[Papers]")
-    all_ids = sorted([fid[0] for fid in cursor.fetchall()])
-    cursor.close()
-    conn.close()
+    with timed('Building chunks'):
+        conn = pymssql.connect(server, user, password, "tempdb")
+        cursor = conn.cursor()
+        cursor.execute("SELECT FileID from [Papers].[dbo].[Papers]")
+        all_ids = sorted([fid[0] for fid in cursor.fetchall()])
+        cursor.close()
+        conn.close()
 
-    chunks = np.percentile(all_ids,np.linspace(0,100,procs)).astype(int)
-    chunks[0]=-1
-    #np.array_split(np.array(sorted([k for k in id_dict.keys()])),60)
-    per_chunk_counts = pd.Series(np.digitize(all_ids,chunks,right=True)-1).value_counts().sort_index().values
+        chunks = np.percentile(all_ids,np.linspace(0,100,procs)).astype(int)
+        chunks[0]=-1
+        #np.array_split(np.array(sorted([k for k in id_dict.keys()])),60)
+        per_chunk_counts = pd.Series(np.digitize(all_ids,chunks,right=True)-1).value_counts().sort_index().values
 
-    pool.map(process,zip(range(procs),chunks,chunks[1:],per_chunk_counts))
+    with timed('Running main processing'):
+        pool.map(process,zip(range(procs),chunks,chunks[1:],per_chunk_counts))
