@@ -67,7 +67,7 @@ def parse_abs(rawtext_arr):
             words = [stemmer.stem(w) for w in words]
 
             if len(words)>0:
-                result.append(' '.join(cleaned))
+                result.append(' '.join(words))
             else:
                 result.append(np.nan)
     return result    
