@@ -110,7 +110,7 @@ if __name__=='__main__':
         with timed('main data processing',pad=' ######## '):
             with timed('parallel processing'):
                 pool = mp.Pool(25)
-                result = pool.map(process,xrange(1991,2016))
+                result = pool.map(process,range(1991,2016))
                 print('----result collected----')
                 with timed('pool shutdown'):
                     try:
@@ -123,7 +123,7 @@ if __name__=='__main__':
         with timed('main data processing',pad=' ######## '):        
             with timed('dataframe concatenation'):
                 result = []
-                for year in xrange(1991,2016):
+                for year in range(1991,2016):
                     result.append(pd.read_pickle('{}{}.pkl'.format(tmpdir,year)))
                     print(year,)
 
