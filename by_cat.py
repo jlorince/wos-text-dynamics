@@ -37,6 +37,8 @@ class process(object):
         self.window = window
         self.logger = logger
         self.args = args
+        if args.mode == 'fixed':
+            self.vocabset = set(vocab)
 
 
     def entropy(self,arr,base=2):
@@ -44,11 +46,12 @@ class process(object):
 
     # Given a pandas.Series of procesed abstracts, return the word frequency distribution 
     # across all abstracts (limited to our chosen vocabulary)
-    def termcounts(self,abs_ser,sample_size=None):
-        if sample_size is not None and len(abs_ser):
-            abs_ser = np.random.choice(abs_ser.values,sample_size,replace=False)
-        tc = Counter(' '.join(abs_ser).split())
-        arr = np.array([tc.get(k,0) for k in self.vocab])
+    def termcounts(self,abs_ser,):
+        if preprocessed:
+            abs_ser = np.random.choice(abs_ser.values,self.sample_size_tokens,replace=False)
+        else:
+            tc = Counter(' '.join(abs_ser).split())
+            arr = np.array([tc.get(k,0) for k in self.vocab])
         return arr 
 
     # calcualte Jensen Shannon Divergence of two probabability distributions
@@ -154,7 +157,7 @@ class process(object):
                 # generate word distributions 
                 word_dists = np.zeros((25,len(self.vocab)))
                 for year,grp in df.groupby('year'):
-                    word_dists[year-1991] = self.termcounts(grp.abstract)
+                    word_dists[year-1991] = self.termcounts(grp.abstract_parsed)
 
                 if self.args.null_model_mode == 'global':
 
@@ -186,14 +189,15 @@ class process(object):
 
                 with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
                     sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
-                    sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.abstract.apply(lambda x: len(x.split())).mean()).min()))
+                    df['abstract_parsed'] = df.abstract_parsed.apply(lambda x: [word for word in x.split() if word in self.vocabset])
+                    self.sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.abstract_parsed.apply(lambda x: len(x.split())).mean()).min()))
                     self.logger.info('Fixed sample size for category {} = {} papers'.format(self.cat,sample_size))
                     for i in range(self.args.null_bootstrap_samples):
                         sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))
                         # generate word distributions 
                         word_dists = np.zeros((25,len(self.vocab)))
                         for year,grp in sampled.groupby('year'):
-                            word_dists[year-1991] = self.termcounts(grp.abstract)
+                            word_dists[year-1991] = self.termcounts(grp.abstract_parsed)
                         ents,ent_difs,jsds = self.calc_measures(word_dists)
                         ent_result.append(ents)
                         ent_dif_result.append(ent_difs)

@@ -6,6 +6,7 @@ from nltk.stem.snowball import EnglishStemmer
 from collections import Counter
 stemmer = EnglishStemmer()
 from nltk.tokenize import word_tokenize
+from tqdm import tqdm as tq
 
 tmpdir = 'P:/Projects/WoS/temp/'
 
@@ -96,9 +97,8 @@ def process(year):
         with timed('data merging',year=year):
             current = abs_current.merge(md_current,on='uid',how='inner').merge(cats_current,on='uid',how='inner').merge(refs_current,on='uid',how='left').merge(kw_current,on='uid',how='left')
             current['year'] = year
-        if limit_journals is None:
-            with timed('saving data'):
-                current.to_pickle('{}{}.pkl'.format(tmpdir,year))
+        with timed('saving data'):
+            current.to_pickle('{}{}.pkl'.format(tmpdir,year))
         print('final datasize: {} ({})'.format(current.shape,year))
     return current
         
@@ -121,33 +121,32 @@ if __name__=='__main__':
 
     else:
         with timed('main data processing',pad=' ######## '):        
-            with timed('dataframe concatenation'):
-                result = []
-                for year in range(1991,2016):
-                    result.append(pd.read_pickle('{}{}.pkl'.format(tmpdir,year)))
-                    print(year,)
+            result = []
+            for year in tq(range(1991,2016)):
+                result.append(pd.read_pickle('{}{}.pkl'.format(tmpdir,year)))
+                print(year,)
+
+    with timed('word freq distribution'):
+        for year,current in tq(zip(range(1991,2016),result)):
+            termdict = {}
+            total = len(current)
+
+            for row in tq(current.abstract_parsed.dropna()):
+                for term in row.split():
+                    termdict[term] = termdict.get(term,0)+1
+
+            global_term_counts = pd.Series(termdict)
+            global_term_counts.to_csv('P:/Projects/WoS/wos-text-dynamics-data/global_term_counts_{}.csv'.format(year),encoding='utf8')
+
 
     with timed('dataframe concatenation'):
         df = pd.concat(result)
 
     with timed('dataframe partitioning'):
-        for cat in all_cats:
-            with timed(cat):
-                cat_df = df[df.categories.apply(lambda x: cat in x)]
-                cat_df.to_pickle('P:/Projects/WoS/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
+        for cat in tq(all_cats):
+            cat_df = df[df.categories.apply(lambda x: cat in x)]
+            cat_df.to_pickle('P:/Projects/WoS/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
 
-    with timed('word freq distribution'):
-        termdict = {}
-        total = len(df)
-
-        for i,row in enumerate(df.abstract_parsed.dropna(),1):
-            for term in row.split():
-                termdict[term] = termdict.get(term,0)+1
-            if i%100000==0: 
-                print("{}/{} ({}%)".format(i,total,100*(i/float(total))))
-
-        global_term_counts = pd.Series(termdict)
-        global_term_counts.to_csv('P:/Projects/WoS/wos-text-dynamics-data/global_term_counts.csv',encoding='utf8')
 
 
 # termdict = {}
