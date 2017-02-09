@@ -44,7 +44,11 @@ def process(input_tuple):
              gzip.open("{}unmatched/text_{}".format(ddir,idx),'w') as unmatched_out,\
              open("{}log_{}".format(ddir,idx),'w') as log:
             for i,(FileID,PaperContent) in enumerate(cursor,1):
-                rawtext,found_abstract,found_formatted_text,found_rawtext = parse_xml(PaperContent)
+                try:
+                    rawtext,found_abstract,found_formatted_text,found_rawtext = parse_xml(PaperContent)
+                except etree.XMLSyntaxError:
+                    log.write("ERROR FOR FILEID {}".format(FileID).encode('utf8'))
+                    continue
                 wos_id = id_dict.get(FileID,'')
                 if wos_id is not '':
                     matched_out.write("{}\t{}\n".format(wos_id,' '.join(rawtext)).encode('utf8'))
@@ -57,10 +61,11 @@ def process(input_tuple):
                     print(s)
                     log.write(s+'\n')
                     log.flush()
-        s = "Idx {}: {}/{} ({:2f}%) records processed\n".format(idx,i,total,100*(i/total))
-        print(s)
-        log.write(s+'\n')
-        log.flush()
+                print("{}/{} ({:2f}%) ".format(i,total,100*(i/total))) # DEBUG
+            s = "Idx {} DONE: {}/{} ({:2f}%) records processed\n".format(idx,i,total,100*(i/total))
+            print(s)
+            log.write(s+'\n')
+            log.flush()
         cursor.close()
         conn.close()
 

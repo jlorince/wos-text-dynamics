@@ -43,8 +43,10 @@ class process(object):
         return scipy_entropy(arr,base=base)
 
     # Given a pandas.Series of procesed abstracts, return the word frequency distribution 
-    # across all abstracts (limited to our chose vocabulary)
-    def termcounts(self,abs_ser):
+    # across all abstracts (limited to our chosen vocabulary)
+    def termcounts(self,abs_ser,sample_size=None):
+        if sample_size is not None and len(abs_ser):
+            abs_ser = np.random.choice(abs_ser.values,sample_size,replace=False)
         tc = Counter(' '.join(abs_ser).split())
         arr = np.array([tc.get(k,0) for k in self.vocab])
         return arr 
@@ -184,6 +186,7 @@ class process(object):
 
                 with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
                     sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
+                    sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.abstract.apply(lambda x: len(x.split())).mean()).min()))
                     self.logger.info('Fixed sample size for category {} = {} papers'.format(self.cat,sample_size))
                     for i in range(self.args.null_bootstrap_samples):
                         sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))

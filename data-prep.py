@@ -5,8 +5,9 @@ import multiprocessing as mp
 from nltk.stem.snowball import EnglishStemmer
 from collections import Counter
 stemmer = EnglishStemmer()
+from nltk.tokenize import word_tokenize
 
-tmpdir = 'S:/UsersData_NoExpiration/jjl2228/keywords/temp/'
+tmpdir = 'P:/Projects/WoS/temp/'
 
 debug = None # set this to some small-ish number to only read part of raw files, for debugging
 
@@ -20,15 +21,15 @@ class timed(object):
         self.pad = pad
     def __enter__(self):
         self.start = time.time()
-        print '{} started...'.format(self.desc)
+        print('{} started...'.format(self.desc))
     def __exit__(self, type, value, traceback):
         if len(self.kwargs)==0:
-            print '{}{} complete in {}{}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),self.pad)
+            print('{}{} complete in {}{}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time)()-self.start)),self.pad)
         else:
-            print '{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad)
+            print('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time).time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad)
 
 
-def parse_abs(rawtext_arr):
+def parse_abs_old(rawtext_arr):
     result = []
     for i,rawtext in enumerate(rawtext_arr):
         if pd.isnull(rawtext):
@@ -42,6 +43,35 @@ def parse_abs(rawtext_arr):
                 result.append('')
     return result
 
+def parse_abs(rawtext_arr):
+    result = []
+    for rawtext in rawtext_arr:
+        words  = np.array(word_tokenize(' '.join(rawtext)))
+        if pd.isnull(rawtext):
+            result.append(np.nan)
+        else:
+            indices = np.where((np.char.endswith(words[:-1],'-'))&(words[:-1]!='-'))[0]
+            dehyphenated = [a[:-1]+b for a,b in zip(words[indices],words[indices+1])]
+            words[indices] = dehyphenated
+            words = np.delete(words,indices+1)
+
+            # lowercase and remove punctuation
+            translator = str.maketrans('', '', string.punctuation)
+            words = np.char.lower(np.char.translate(words,translator,string.punctuation))
+
+            # remove all words that are purely alpha[are purely numeric]
+            #words = words[~np.char.isnumeric(words)]
+            words = words[np.char.isalpha(words)]
+
+            # apply stemming
+            words = [stemmer.stem(w) for w in words]
+
+            if len(words)>0:
+                result.append(' '.join(cleaned))
+            else:
+                result.append(np.nan)
+    return result    
+
 
 def process(year):
     with timed(desc=year,pad='----'):
@@ -52,7 +82,7 @@ def process(year):
         with timed('abstract loading',year=year):
             abs_current = pd.read_table('P:/Projects/WoS/WoS/parsed/abstracts/{}.txt.gz'.format(year),header=None,names=['uid','abstract'], nrows=debug).dropna()
         with timed('abstract parsing',year=year):
-            abs_current['abstract'] = parse_abs(abs_current['abstract'].values)
+            abs_current['abstract_parsed'] = parse_abs(abs_current['abstract'].values)
         with timed('keyword loading',year=year):
             #kw_current = pd.read_table('S:/UsersData_NoExpiration/jjl2228/keywords/pubs_by_year/{}.txt.gz'.format(year),header=None,names=['keyword','uid'],nrows=debug)
             kw_current = pd.read_table('P:/Projects/WoS/WoS/parsed/keywords/{}.txt.gz'.format(year),header=None,names=['uid','nk','keywords'],usecols=['uid','keywords'],quoting=csv.QUOTE_NONE,nrows=debug)
@@ -69,7 +99,7 @@ def process(year):
         if limit_journals is None:
             with timed('saving data'):
                 current.to_pickle('{}{}.pkl'.format(tmpdir,year))
-        print 'final datasize: {} ({})'.format(current.shape,year)
+        print('final datasize: {} ({})'.format(current.shape,year))
     return current
         
 if __name__=='__main__':
@@ -81,13 +111,13 @@ if __name__=='__main__':
             with timed('parallel processing'):
                 pool = mp.Pool(25)
                 result = pool.map(process,xrange(1991,2016))
-                print '----result collected----'
+                print('----result collected----')
                 with timed('pool shutdown'):
                     try:
                         pool.terminate()
                         pool.close()
                     except:
-                       print "exception in pool shutdown, but let's keep going..."
+                       print("exception in pool shutdown, but let's keep going...")
 
     else:
         with timed('main data processing',pad=' ######## '):        
@@ -95,7 +125,7 @@ if __name__=='__main__':
                 result = []
                 for year in xrange(1991,2016):
                     result.append(pd.read_pickle('{}{}.pkl'.format(tmpdir,year)))
-                    print year,
+                    print(year,)
 
     with timed('dataframe concatenation'):
         df = pd.concat(result)
@@ -104,38 +134,38 @@ if __name__=='__main__':
         for cat in all_cats:
             with timed(cat):
                 cat_df = df[df.categories.apply(lambda x: cat in x)]
-                cat_df.to_pickle('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
+                cat_df.to_pickle('P:/Projects/WoS/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
 
     with timed('word freq distribution'):
         termdict = {}
         total = len(df)
 
-        for i,row in enumerate(df.abstract.dropna(),1):
+        for i,row in enumerate(df.abstract_parsed.dropna(),1):
             for term in row.split():
                 termdict[term] = termdict.get(term,0)+1
             if i%100000==0: 
-                print "{}/{} ({}%)".format(i,total,100*(i/float(total)))
+                print("{}/{} ({}%)".format(i,total,100*(i/float(total))))
 
         global_term_counts = pd.Series(termdict)
-        global_term_counts.to_csv('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/global_term_counts.csv',encoding='utf8')
+        global_term_counts.to_csv('P:/Projects/WoS/wos-text-dynamics-data/global_term_counts.csv',encoding='utf8')
 
 
-termdict = {}
-import glob
-import pandas as pd
+# termdict = {}
+# import glob
+# import pandas as pd
 
-for j,fi in enumerate(glob.glob('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/by-cat/*.pkl'),1):
-    print "{} ({}/{})".format(fi,j,251)
-    df = pd.read_pickle(fi)
-    total = len(df)
-    for i,row in enumerate(df.abstract.dropna(),1):
-        for term in row.split():
-            termdict[term] = termdict.get(term,0)+1
-        if i%100000==0: 
-            print "{}/{} ({}%)".format(i,total,100*(i/float(total)))
+# for j,fi in enumerate(glob.glob('P:/Projects/WoS/wos-text-dynamics-data/by-cat/*.pkl'),1):
+#     print("{} ({}/{})".format(fi,j,251))
+#     df = pd.read_pickle(fi)
+#     total = len(df)
+#     for i,row in enumerate(df.abstract_parsed.dropna(),1):
+#         for term in row.split():
+#             termdict[term] = termdict.get(term,0)+1
+#         if i%100000==0: 
+#             print("{}/{} ({}%)".format(i,total,100*(i/float(total))))
 
-    global_term_counts = pd.Series(termdict)
-    global_term_counts.to_csv('S:/UsersData_NoExpiration/jjl2228/wos-text-dynamics-data/global_term_counts.csv',encoding='utf8')
+#     global_term_counts = pd.Series(termdict)
+#     global_term_counts.to_csv('P:/Projects/WoS/wos-text-dynamics-data/global_term_counts.csv',encoding='utf8')
 
 
 

@@ -105,7 +105,7 @@ class xml_parser(object):
 
         # remove all words that are purely alpha[are purely numeric]
         #self.words = self.words[~np.char.isnumeric(self.words)]
-        self.words = self.words[np.char.isaplha(self.words)]
+        self.words = self.words[np.char.isalpha(self.words)]
 
         # apply stemming
         self.words = [stemmer.stem(w) for w in self.words]
