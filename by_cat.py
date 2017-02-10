@@ -37,7 +37,7 @@ class process(object):
         self.window = window
         self.logger = logger
         self.args = args
-        if args.mode == 'fixed':
+        if args.null_model_mode == 'fixed':
             self.vocabset = set(vocab)
 
 
@@ -47,11 +47,17 @@ class process(object):
     # Given a pandas.Series of procesed abstracts, return the word frequency distribution 
     # across all abstracts (limited to our chosen vocabulary)
     def termcounts(self,abs_ser,):
-        if preprocessed:
-            abs_ser = np.random.choice(abs_ser.values,self.sample_size_tokens,replace=False)
+        if self.args.null_model_mode=='fixed':
+            abstracts = []
+            for abstract in abs_ser:
+                abstract = abstract.split()
+                if len(abstract)>self.sample_size_tokens:
+                    abstract = list(np.random.choice(abstract,self.sample_size_tokens,replace=False))
+                abstracts += abstract
+            tc = Counter(abstracts)
         else:
             tc = Counter(' '.join(abs_ser).split())
-            arr = np.array([tc.get(k,0) for k in self.vocab])
+        arr = np.array([tc.get(k,0) for k in self.vocab])
         return arr 
 
     # calcualte Jensen Shannon Divergence of two probabability distributions
