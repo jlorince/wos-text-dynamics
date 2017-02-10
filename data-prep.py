@@ -8,8 +8,9 @@ stemmer = EnglishStemmer()
 from nltk.tokenize import word_tokenize
 from tqdm import tqdm as tq
 
+basedir = 'E:/Users/jjl2228/WoS/'
 #tmpdir = 'P:/Projects/WoS/temp/'
-tmpdir = 'E:/Users/jjl2228/WoS/temp/'
+tmpdir = basedir+'temp/'
 
 debug = None # set this to some small-ish number to only read part of raw files, for debugging
 
@@ -79,23 +80,23 @@ def process(year):
     try:
         with timed(desc=year,pad='----'):
             with timed('metadata loading',year=year):
-                md_current = pd.read_table('P:/Projects/WoS/WoS/parsed/metadata/{}.txt.gz'.format(year),header=None, nrows=debug,
+                md_current = pd.read_table(basedir+'WoS/parsed/metadata/{}.txt.gz'.format(year),header=None, nrows=debug,
                                        names=["uid","date","pubtype","volume","issue","pages","paper_title","source_title","doctype"],
                                       usecols=["uid","pubtype","paper_title","source_title","doctype"])
             with timed('abstract loading',year=year):
-                abs_current = pd.read_table('P:/Projects/WoS/WoS/parsed/abstracts/{}.txt.gz'.format(year),header=None,names=['uid','abstract'], nrows=debug).dropna()
+                abs_current = pd.read_table('{}WoS/parsed/abstracts/{}.txt.gz'.format(basedir,year),header=None,names=['uid','abstract'], nrows=debug).dropna()
             with timed('abstract parsing',year=year):
                 abs_current['abstract_parsed'] = parse_abs(abs_current['abstract'].values)
             with timed('keyword loading',year=year):
                 #kw_current = pd.read_table('S:/UsersData_NoExpiration/jjl2228/keywords/pubs_by_year/{}.txt.gz'.format(year),header=None,names=['keyword','uid'],nrows=debug)
-                kw_current = pd.read_table('P:/Projects/WoS/WoS/parsed/keywords/{}.txt.gz'.format(year),header=None,names=['uid','nk','keywords'],usecols=['uid','keywords'],quoting=csv.QUOTE_NONE,nrows=debug)
+                kw_current = pd.read_table('{}WoS/parsed/keywords/{}.txt.gz'.format(basedir,year),header=None,names=['uid','nk','keywords'],usecols=['uid','keywords'],quoting=csv.QUOTE_NONE,nrows=debug)
             with timed('category loading',year=year):
-                cats_current = pd.read_table('P:/Projects/WoS/WoS/parsed/subjects/{}.txt.gz'.format(year),header=None,names=['uid','heading','subheading','categories'], nrows=debug)#.dropna()
+                cats_current = pd.read_table('{}WoS/parsed/subjects/{}.txt.gz'.format(basedir,year),header=None,names=['uid','heading','subheading','categories'], nrows=debug)#.dropna()
             with timed('category formatting',year=year):
                 #cats_current = pd.concat([cats_current[['uid','heading','subheading']],cats_current['categories'].apply(gen_series)],axis=1)
                 cats_current['categories'] = cats_current['categories'].apply(lambda x: x if pd.isnull(x) else x.split('|'))
             with timed('reference loading',year=year):
-                refs_current = pd.read_table('P:/Projects/WoS/WoS/parsed/references/{}.txt.gz'.format(year),header=None,names=['uid','n_refs','refs','missing'],usecols=['uid','refs'], nrows=debug)
+                refs_current = pd.read_table('{}WoS/parsed/references/{}.txt.gz'.format(basedir,year),header=None,names=['uid','n_refs','refs','missing'],usecols=['uid','refs'], nrows=debug)
             with timed('data merging',year=year):
                 current = abs_current.merge(md_current,on='uid',how='inner').merge(cats_current,on='uid',how='inner').merge(refs_current,on='uid',how='left').merge(kw_current,on='uid',how='left')
                 current['year'] = year
