@@ -8,7 +8,8 @@ stemmer = EnglishStemmer()
 from nltk.tokenize import word_tokenize
 from tqdm import tqdm as tq
 
-tmpdir = 'P:/Projects/WoS/temp/'
+#tmpdir = 'P:/Projects/WoS/temp/'
+tmpdir = 'E:/Users/jjl2228/WoS/temp/'
 
 debug = None # set this to some small-ish number to only read part of raw files, for debugging
 
@@ -139,7 +140,8 @@ if __name__=='__main__':
                     termdict[term] = termdict.get(term,0)+1
 
             global_term_counts = pd.Series(termdict)
-            global_term_counts.to_csv('P:/Projects/WoS/wos-text-dynamics-data/global_term_counts_{}.csv'.format(year),encoding='utf8')
+            #global_term_counts.to_csv('P:/Projects/WoS/wos-text-dynamics-data/global_term_counts_{}.csv'.format(year),encoding='utf8')
+            global_term_counts.to_csv('E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts/global_term_counts_{}.csv'.format(year),encoding='utf8')
 
 
     with timed('dataframe concatenation'):
@@ -148,7 +150,8 @@ if __name__=='__main__':
     with timed('dataframe partitioning'):
         for cat in tq(all_cats):
             cat_df = df[df.categories.apply(lambda x: cat in x)]
-            cat_df.to_pickle('P:/Projects/WoS/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
+            #cat_df.to_pickle('P:/Projects/WoS/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
+            cat_df.to_pickle('E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
 
 
 
