@@ -121,7 +121,7 @@ if __name__=='__main__':
                         pool.close()
                     except:
                        print("exception in pool shutdown, but let's keep going...")
-    sys.exit()
+        sys.exit()
 
     else:
         with timed('main data processing',pad=' ######## '):        
