@@ -43,7 +43,7 @@ def process(input_tuple):
              gzip.open("{}matched/text_{}".format(ddir,idx),'w') as matched_out,\
              gzip.open("{}unmatched/text_{}".format(ddir,idx),'w') as unmatched_out,\
              open("{}log_{}".format(ddir,idx),'w') as log:
-            for i,(FileID,PaperContent) in enumerate(cursor,76764):
+            for i,(FileID,PaperContent) in enumerate(cursor,1):
                 try:
                     rawtext,found_abstract,found_formatted_text,found_rawtext = parse_xml(PaperContent)
                 except etree.XMLSyntaxError:

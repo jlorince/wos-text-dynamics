@@ -47,7 +47,7 @@ def parse_abs_old(rawtext_arr):
 def parse_abs(rawtext_arr):
     result = []
     for rawtext in rawtext_arr:
-        words  = np.array(word_tokenize(' '.join(rawtext)))
+        words  = np.array(word_tokenize(rawtext))
         if pd.isnull(rawtext):
             result.append(np.nan)
         else:
@@ -101,34 +101,33 @@ def process(year):
             with timed('saving data'):
                 current.to_pickle('{}{}.pkl'.format(tmpdir,year))
             print('final datasize: {} ({})'.format(current.shape,year))
-        return current
+        return None
     except:
         return None
         
 if __name__=='__main__':
 
-    temp_data_generated = int(sys.argv[1])
+    #temp_data_generated = int(sys.argv[1])
 
-    if not temp_data_generated:
-        with timed('main data processing',pad=' ######## '):
-            with timed('parallel processing'):
-                pool = mp.Pool(25)
-                result = pool.map(process,range(1991,2016))
-                print('----result collected----')
-                with timed('pool shutdown'):
-                    try:
-                        pool.terminate()
-                        pool.close()
-                    except:
-                       print("exception in pool shutdown, but let's keep going...")
-        sys.exit()
+    #if not temp_data_generated:
+    with timed('main data processing',pad=' ######## '):
+        with timed('parallel processing'):
+            pool = mp.Pool(25)
+            result = pool.map(process,range(1991,2016))
+            print('----result collected----')
+            with timed('pool shutdown'):
+                try:
+                    pool.terminate()
+                    pool.close()
+                except:
+                   print("exception in pool shutdown, but let's keep going...")
 
-    else:
-        with timed('main data processing',pad=' ######## '):        
-            result = []
-            for year in tq(range(1991,2016)):
-                result.append(pd.read_pickle('{}{}.pkl'.format(tmpdir,year)))
-                print(year,)
+    #else:
+    with timed('Loading pickles',pad=' ######## '):        
+        result = []
+        for year in tq(range(1991,2016)):
+            result.append(pd.read_pickle('{}{}.pkl'.format(tmpdir,year)))
+            print(year,)
 
     with timed('word freq distribution'):
         for year,current in tq(zip(range(1991,2016),result)):
