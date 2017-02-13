@@ -65,11 +65,11 @@ def parse_text(line):
             r.set(uid,' '.join(result))
 
 def wrapper(f):
-    with timed('Processing file {}'.format(f))
-    for i,line in enumerate(gzip.open(f),1):
-        parse_text(line)
-        if i%1000==0:
-            print("{}: {} lines processed (overall: {})".format(f,i.r.dbsize()))
+    with timed('Processing file {}'.format(f)):
+        for i,line in enumerate(gzip.open(f),1):
+            parse_text(line)
+            if i%1000==0:
+                print("{}: {} lines processed (overall: {})".format(f,i.r.dbsize()))
 
         
 if __name__=='__main__':
