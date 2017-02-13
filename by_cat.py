@@ -35,7 +35,7 @@ class process(object):
     def __init__(self,vocab,window,args,logger):
         self.vocab = vocab
         self.window = window
-        self.logger = logger
+        #self.logger = logger
         self.args = args
         if args.null_model_mode == 'fixed':
             self.vocabset = set(vocab)
@@ -50,7 +50,6 @@ class process(object):
         if self.args.null_model_mode=='fixed':
             abstracts = []
             for abstract in abs_ser:
-                abstract = abstract.split()
                 if len(abstract)>self.sample_size_tokens:
                     abstract = list(np.random.choice(abstract,self.sample_size_tokens,replace=False))
                 abstracts += abstract
@@ -264,7 +263,7 @@ if __name__=='__main__':
     parser.add_argument("-d", "--datadir",help="root input data directory",default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat/',type=str)
     #parse.add_argument("-c", "--cats", help="path to pickled field-level dataframes", default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat',type=str)
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
-    parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='local',type=str,choices=['global','local','fixed'])
+    parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='fixed',type=str,choices=['global','local','fixed'])
     parser.add_argument("-r", "--min_prop",help='pRoportion of year with least publications to establish fixed sample size ',default=0.5,type=float)
 
 
