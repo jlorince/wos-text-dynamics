@@ -5,9 +5,14 @@ import multiprocessing as mp
 from nltk.stem.snowball import EnglishStemmer
 from collections import Counter
 stemmer = EnglishStemmer()
+from nltk.corpus import stopwords
+stop = set(stopwords.words('english'))
+stop = stop.union([stemmer.stem(s) for s in stop])
 from nltk.tokenize import word_tokenize
 from tqdm import tqdm as tq
+import redis
 
+r = redis.StrictRedis(host='localhost', port=6379, db=0)
 basedir = 'E:/Users/jjl2228/WoS/'
 #tmpdir = 'P:/Projects/WoS/temp/'
 tmpdir = basedir+'temp/'
@@ -32,123 +37,41 @@ class timed(object):
             print('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.items()]),self.pad))
 
 
-def parse_abs_old(rawtext_arr):
-    result = []
-    for i,rawtext in enumerate(rawtext_arr):
-        if pd.isnull(rawtext):
-            result.append('')
-        else:
-            rawtext = rawtext.translate(None,string.punctuation).decode('utf8').split()
-            if len(rawtext)>0:
-                cleaned = [stemmer.stem(w) for w in rawtext]
-                result.append(' '.join(cleaned))
-            else:
-                result.append('')
-    return result
-
-def parse_abs(rawtext_arr):
-    result = []
-    for rawtext in rawtext_arr:
+def parse_text(line):
+    uid,rawtext = line.decode('utf8').strip().split('\t')
+    if rawtext:
         words  = np.array(word_tokenize(rawtext))
-        if pd.isnull(rawtext):
-            result.append(np.nan)
-        else:
-            indices = np.where((np.char.endswith(words[:-1],'-'))&(words[:-1]!='-'))[0]
-            dehyphenated = [a[:-1]+b for a,b in zip(words[indices],words[indices+1])]
-            words[indices] = dehyphenated
-            words = np.delete(words,indices+1)
+        indices = np.where((np.char.endswith(words[:-1],'-'))&(words[:-1]!='-'))[0]
+        dehyphenated = [a[:-1]+b for a,b in zip(words[indices],words[indices+1])]
+        words[indices] = dehyphenated
+        words = np.delete(words,indices+1)
 
-            # lowercase and remove punctuation
-            translator = str.maketrans('', '', string.punctuation)
-            words = np.char.lower(np.char.translate(words,translator,string.punctuation))
-
-            # remove all words that are purely alpha[are purely numeric]
-            #words = words[~np.char.isnumeric(words)]
-            words = words[np.char.isalpha(words)]
-
-            # apply stemming
-            words = [stemmer.stem(w) for w in words]
-
-            if len(words)>0:
-                result.append(' '.join(words))
-            else:
-                result.append(np.nan)
-    return result    
+        # lowercase and remove punctuation
+        translator = str.maketrans('', '', string.punctuation)
+        words = np.char.lower(np.char.translate(words,translator,string.punctuation))
 
 
-def process(year):
-    with timed(desc=year,pad='----'):
-        with timed('metadata loading',year=year):
-            md_current = pd.read_table('{}WoS/parsed/metadata/{}.txt.gz'.format(basedir,year),header=None, nrows=debug,
-                                   names=["uid","date","pubtype","volume","issue","pages","paper_title","source_title","doctype"],
-                                  usecols=["uid","pubtype","paper_title","source_title","doctype"])
-        with timed('abstract loading',year=year):
-            abs_current = pd.read_table('{}WoS/parsed/abstracts/{}.txt.gz'.format(basedir,year),header=None,names=['uid','abstract'], nrows=debug).dropna()
-        with timed('abstract parsing',year=year):
-            abs_current['abstract_parsed'] = parse_abs(abs_current['abstract'].values)
-        with timed('keyword loading',year=year):
-            #kw_current = pd.read_table('S:/UsersData_NoExpiration/jjl2228/keywords/pubs_by_year/{}.txt.gz'.format(year),header=None,names=['keyword','uid'],nrows=debug)
-            kw_current = pd.read_table('{}WoS/parsed/keywords/{}.txt.gz'.format(basedir,year),header=None,names=['uid','nk','keywords'],usecols=['uid','keywords'],quoting=csv.QUOTE_NONE,nrows=debug)
-        with timed('category loading',year=year):
-            cats_current = pd.read_table('{}WoS/parsed/subjects/{}.txt.gz'.format(basedir,year),header=None,names=['uid','heading','subheading','categories'], nrows=debug)#.dropna()
-        with timed('category formatting',year=year):
-            #cats_current = pd.concat([cats_current[['uid','heading','subheading']],cats_current['categories'].apply(gen_series)],axis=1)
-            cats_current['categories'] = cats_current['categories'].apply(lambda x: x if pd.isnull(x) else x.split('|'))
-        with timed('reference loading',year=year):
-            refs_current = pd.read_table('{}WoS/parsed/references/{}.txt.gz'.format(basedir,year),header=None,names=['uid','n_refs','refs','missing'],usecols=['uid','refs'], nrows=debug)
-        with timed('data merging',year=year):
-            current = abs_current.merge(md_current,on='uid',how='inner').merge(cats_current,on='uid',how='inner').merge(refs_current,on='uid',how='left').merge(kw_current,on='uid',how='left')
-            current['year'] = year
-        with timed('saving data'):
-            current.to_pickle('{}{}.pkl'.format(tmpdir,year))
-        print('final datasize: {} ({})'.format(current.shape,year))
-    return None
+        # remove all words that are purely alpha[are purely numeric]
+        #words = words[~np.char.isnumeric(words)]
+        words = words[(np.char.isalpha(words))&(np.char.str_len(words)>=3)]
+
+        # apply stemming
+        result = []
+        for w in words:
+            w = stemmer.stem(w)
+            if w not in stop:
+                result.append(w)
+        if len(words)>0:
+            r.set(uid,' '.join(result))
+
+def wrapper(f):
+    for line in gzip.open(f):
+        parse_text(line)
 
         
 if __name__=='__main__':
 
-    #temp_data_generated = int(sys.argv[1])
+    files = glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/raw/matched/text_*')
+    pool = mp.Pool(len(files))
 
-    #if not temp_data_generated:
-    with timed('main data processing',pad=' ######## '):
-        with timed('parallel processing'):
-            pool = mp.Pool(25)
-            result = pool.map(process,range(1991,2016))
-            print('----result collected----')
-            with timed('pool shutdown'):
-                try:
-                    pool.terminate()
-                    pool.close()
-                except:
-                   print("exception in pool shutdown, but let's keep going...")
-
-    #else:
-    with timed('Loading pickles',pad=' ######## '):        
-        result = []
-        for year in tq(range(1991,2016)):
-            result.append(pd.read_pickle('{}{}.pkl'.format(tmpdir,year)))
-            print(year,)
-
-    with timed('word freq distribution'):
-        for year,current in tq(zip(range(1991,2016),result)):
-            termdict = {}
-            total = len(current)
-
-            for row in tq(current.abstract_parsed.dropna()):
-                for term in row.split():
-                    termdict[term] = termdict.get(term,0)+1
-
-            global_term_counts = pd.Series(termdict)
-            #global_term_counts.to_csv('P:/Projects/WoS/wos-text-dynamics-data/global_term_counts_{}.csv'.format(year),encoding='utf8')
-            global_term_counts.to_csv('E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts/global_term_counts_{}.csv'.format(year),encoding='utf8')
-
-
-    with timed('dataframe concatenation'):
-        df = pd.concat(result).dropna(subset=['categories'])
-
-    with timed('dataframe partitioning'):
-        for cat in tq(all_cats):
-            cat_df = df[df.categories.apply(lambda x: cat in x)]
-            #cat_df.to_pickle('P:/Projects/WoS/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
-            cat_df.to_pickle('E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
-
+    pool.map(wrapper,files)
