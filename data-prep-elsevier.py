@@ -38,8 +38,11 @@ class timed(object):
 
 
 def parse_text(line):
-    uid,rawtext = line.decode('utf8').strip().split('\t')
-    if rawtext:
+    line = line.decode('utf8').strip().split('\t')
+    if len(line)==1:
+        return None
+    elif len(line)==2:
+        uid,rawtext = line
         words  = np.array(word_tokenize(rawtext))
         indices = np.where((np.char.endswith(words[:-1],'-'))&(words[:-1]!='-'))[0]
         dehyphenated = [a[:-1]+b for a,b in zip(words[indices],words[indices+1])]
@@ -63,6 +66,8 @@ def parse_text(line):
                 result.append(w)
         if len(words)>0:
             r.set(uid,' '.join(result))
+    else:
+        raise Excetion('Too many fields?')
 
 def wrapper(f):
     with timed('Processing file {}'.format(f)):
