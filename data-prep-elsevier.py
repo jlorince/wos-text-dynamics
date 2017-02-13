@@ -67,7 +67,7 @@ def parse_text(line):
 def wrapper(f):
     for i,line in enumerate(gzip.open(f),1):
         parse_text(line)
-        if%1000==0:
+        if i%1000==0:
             print("{}: {} lines processed".format(f,i))
 
         
