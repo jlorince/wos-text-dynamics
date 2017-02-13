@@ -1,5 +1,5 @@
 import numpy as np
-import gzip,time,datetime,string,signal,sys,pickle,codecs,csv
+import gzip,time,datetime,string,signal,sys,pickle,codecs,csv,glob
 import pandas as pd
 import multiprocessing as mp
 from nltk.stem.snowball import EnglishStemmer
@@ -65,8 +65,10 @@ def parse_text(line):
             r.set(uid,' '.join(result))
 
 def wrapper(f):
-    for line in gzip.open(f):
+    for i,line in enumerate(gzip.open(f),1):
         parse_text(line)
+        if%1000==0:
+            print("{}: {} lines processed".format(f,i))
 
         
 if __name__=='__main__':
