@@ -65,10 +65,11 @@ def parse_text(line):
             r.set(uid,' '.join(result))
 
 def wrapper(f):
+    with timed('Processing file {}'.format(f))
     for i,line in enumerate(gzip.open(f),1):
         parse_text(line)
         if i%1000==0:
-            print("{}: {} lines processed".format(f,i))
+            print("{}: {} lines processed (overall: {})".format(f,i.r.dbsize()))
 
         
 if __name__=='__main__':
@@ -76,4 +77,9 @@ if __name__=='__main__':
     files = glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/raw/matched/text_*')
     pool = mp.Pool(len(files))
 
-    pool.map(wrapper,files)
+    with timed('Parallel processing'):
+        pool.map(wrapper,files)
+    try:
+        pool.close()
+    except:
+        pass
