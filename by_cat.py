@@ -35,7 +35,7 @@ class process(object):
     def __init__(self,vocab,window,args,logger):
         self.vocab = vocab
         self.window = window
-        #self.logger = logger
+        self.logger = logger
         self.args = args
         if args.null_model_mode == 'fixed':
             self.vocabset = set(vocab)
