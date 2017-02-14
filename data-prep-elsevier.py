@@ -1,18 +1,26 @@
 import numpy as np
-import gzip,time,datetime,string,signal,sys,pickle,codecs,csv,glob
+import gzip,time,datetime,string,signal,sys,pickle,codecs,csv,glob,unicodedata
 import pandas as pd
 import multiprocessing as mp
 from nltk.stem.snowball import EnglishStemmer
 from collections import Counter
-stemmer = EnglishStemmer()
 from nltk.corpus import stopwords
-stop = set(stopwords.words('english'))
-stop = stop.union([stemmer.stem(s) for s in stop])
 from nltk.tokenize import word_tokenize
 from tqdm import tqdm as tq
 import redis
 
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+translator = dict.fromkeys(i for i in range(sys.maxunicode)
+                      if unicodedata.category(chr(i)).startswith('P'))
+punct_string = ''
+for i in range(sys.maxunicode):
+    if unicodedata.category(chr(i)).startswith('P'):
+        punct_string += chr(i)
+
+stemmer = EnglishStemmer()
+stop = set(stopwords.words('english'))
+stop = stop.union([stemmer.stem(s) for s in stop])
 
 
 class timed(object):
@@ -31,9 +39,9 @@ class timed(object):
 
 
 def parse_text(line):
-    line = line.decode('utf8').strip().split('\t')
+    line = line.strip().split('\t')
     if len(line)==1:
-        return None
+        return 0
     elif len(line)==2:
         uid,rawtext = line
         words  = np.array(word_tokenize(rawtext))
@@ -43,7 +51,7 @@ def parse_text(line):
         words = np.delete(words,indices+1)
 
         # lowercase and remove punctuation
-        translator = str.maketrans('', '', string.punctuation)
+        #translator = str.maketrans('', '', string.punctuation)
         words = np.char.lower(np.char.translate(words,translator,string.punctuation))
 
 
@@ -59,15 +67,18 @@ def parse_text(line):
                 result.append(w)
         if len(words)>0:
             r.set(uid,' '.join(result))
+            return 1
+        return 0
+
     else:
-        raise Excetion('Too many fields?')
+        raise Exception('Too many fields?')
 
 def wrapper(f):
     with timed('Processing file {}'.format(f)):
         for i,line in enumerate(gzip.open(f),1):
-            parse_text(line)
+            parse_text(line.decode('utf8'))
             if i%1000==0:
-                print("{}: {} lines processed (overall: {})".format(f,i,    r.dbsize()))
+                print("{}: {} lines processed (overall: {})".format(f,i,r.dbsize()))
 
         
 if __name__=='__main__':
