@@ -153,7 +153,7 @@ class process(object):
                 self.logger.info('Category "{}" already done for window={}'.format(self.cat,self.window))
                 return 0
 
-            df = pd.read_pickle(fi)
+            df = pd.read_pickle(fi).dropna(subset=['abstract_parsed'])
             if len(df)==0:
                 self.logger.info('No data for category "{}"'.format(self.cat))
                 return 0
