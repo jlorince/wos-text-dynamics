@@ -293,7 +293,8 @@ if __name__=='__main__':
     vocab_path = args.datadir+'vocab_pruned_'+str(args.vocab_thresh)
     if os.path.exists(vocab_path):
         rootLogger.info('Loading existing vocab file')
-        vocab = [line.strip() for line in codecs.open(vocab_path,encoding='utf8')]
+        #vocab = [line.strip() for line in codecs.open(vocab_path,encoding='utf8')]
+        vocab = [line.strip() for line in open(vocab_path)]
     else:
         rootLogger.info('Generating new vocab file')
         vocab_dict ={}
