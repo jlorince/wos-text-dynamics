@@ -195,8 +195,9 @@ class process(object):
                 with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
                     sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
                     df['abstract_parsed'] = df.abstract_parsed.apply(lambda x: [word for word in x.split() if word in self.vocabset])
-                    self.sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.abstract_parsed.apply(lambda x: len(x.split())).mean()).min()))
-                    self.logger.info('Fixed sample size for category {} = {} papers'.format(self.cat,sample_size))
+                    self.sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.abstract_parsed.apply(lambda x: len(x)).mean()).min()))
+                    self.logger.info('Fixed sample size DOCUMENTS for category {} = {}'.format(self.cat,sample_size))
+                    self.logger.info('Fixed sample size TOKENS for category {} = {}'.format(self.cat,sample_size_tokens))
                     for i in range(self.args.null_bootstrap_samples):
                         sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))
                         # generate word distributions 
