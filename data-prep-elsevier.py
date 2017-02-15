@@ -1,7 +1,7 @@
 import numpy as np
 import gzip,time,datetime,string,signal,sys,pickle,codecs,csv,glob,unicodedata
 import pandas as pd
-import multiprocessing as mp
+import multiprocess as mp
 from nltk.stem.snowball import EnglishStemmer
 from collections import Counter
 from nltk.corpus import stopwords
@@ -11,8 +11,7 @@ import redis
 
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
 
-translator = dict.fromkeys(i for i in range(sys.maxunicode)
-                      if unicodedata.category(chr(i)).startswith('P'))
+translator = dict.fromkeys(i for i in range(sys.maxunicode) if unicodedata.category(chr(i)).startswith('P'))
 punct_string = ''
 for i in range(sys.maxunicode):
     if unicodedata.category(chr(i)).startswith('P'):
@@ -83,12 +82,15 @@ def wrapper(f):
         
 if __name__=='__main__':
 
-    files = glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/raw/matched/text_*')
-    pool = mp.Pool(len(files))
+     df_metadata = pd.concat([pd.read_table(f,header=None,compression='gzip') for f in ['metadata_{}'.format(i) for i in range(24)]]).dropna()
 
-    with timed('Parallel processing'):
-        pool.map(wrapper,files)
-    try:
-        pool.close()
-    except:
-        pass
+
+    # files = glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/raw/matched/text_*')
+    # pool = mp.Pool(len(files))
+
+    # with timed('Parallel processing'):
+    #     pool.map(wrapper,files)
+    # try:
+    #     pool.close()
+    # except:
+    #     pass
