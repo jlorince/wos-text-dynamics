@@ -260,9 +260,9 @@ if __name__=='__main__':
     parser.add_argument("-p", "--procs",help="specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
     parser.add_argument("-w", "--window", help="window size, enter a single value, range (x_y), or list (x,y,z)",type=str,default='1')
     parser.add_argument("-l", "--logfile", help="prefix for logfile",type=str,default='')
-    parser.add_argument("-o", "--output", help="output path for results",type=str,default='/backup/home/jared/storage/wos-text-dynamics-data/results/')
+    parser.add_argument("-o", "--output", help="output path for results",type=str,default='E:/Users/jjl2228/WoS/wos-text-dynamics-data/results/')
     parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=100)
-    parser.add_argument("-d", "--datadir",help="root input data directory",default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat/',type=str)
+    parser.add_argument("-d", "--datadir",help="root input data directory",default='E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat/',type=str)
     #parse.add_argument("-c", "--cats", help="path to pickled field-level dataframes", default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat',type=str)
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
     parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='fixed',type=str,choices=['global','local','fixed'])
@@ -306,11 +306,13 @@ if __name__=='__main__':
                     vocab_dict[term] = vocab_dict.get(term,0)+1
         raw_term_counts = pd.Series(vocab_dict)  
 
-        stemmer = EnglishStemmer()
-        stop = set(stopwords.words('english'))
-        stop = stop.union([stemmer.stem(s) for s in stop])
+        # this is now handled in data-prep.py
+        #stemmer = EnglishStemmer()
+        #stop = set(stopwords.words('english'))
+        #stop = stop.union([stemmer.stem(s) for s in stop])
         pruned = raw_term_counts[raw_term_counts>=args.vocab_thresh]
-        vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
+        #vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
+        vocab = sorted(pruned.index.values)
         rootLogger.info("Total vocab size= {}".format(len(vocab)))
 
     pool = mp.Pool(args.procs)

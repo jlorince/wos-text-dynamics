@@ -12,10 +12,10 @@ import redis
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 translator = dict.fromkeys(i for i in range(sys.maxunicode) if unicodedata.category(chr(i)).startswith('P'))
-punct_string = ''
-for i in range(sys.maxunicode):
-    if unicodedata.category(chr(i)).startswith('P'):
-        punct_string += chr(i)
+# punct_string = ''
+# for i in range(sys.maxunicode):
+#     if unicodedata.category(chr(i)).startswith('P'):
+#         punct_string += chr(i)
 
 stemmer = EnglishStemmer()
 stop = set(stopwords.words('english'))
@@ -51,7 +51,7 @@ def parse_text(line):
 
         # lowercase and remove punctuation
         #translator = str.maketrans('', '', string.punctuation)
-        words = np.char.lower(np.char.translate(words,translator,string.punctuation))
+        words = np.char.lower(np.char.translate(words,translator))
 
 
         # remove all words that are purely alpha[are purely numeric]

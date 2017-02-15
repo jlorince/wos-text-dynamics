@@ -13,10 +13,10 @@ tmpdir = basedir+'temp/'
 debug=None
 
 translator = dict.fromkeys(i for i in range(sys.maxunicode) if unicodedata.category(chr(i)).startswith('P'))
-punct_string = ''
-for i in range(sys.maxunicode):
-    if unicodedata.category(chr(i)).startswith('P'):
-        punct_string += chr(i)
+# punct_string = ''
+# for i in range(sys.maxunicode):
+#     if unicodedata.category(chr(i)).startswith('P'):
+#         punct_string += chr(i)
 
 stemmer = EnglishStemmer()
 stop = set(stopwords.words('english'))
@@ -39,21 +39,6 @@ class timed(object):
         else:
             print('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.items()]),self.pad))
 
-
-def parse_abs_old(rawtext_arr):
-    result = []
-    for i,rawtext in enumerate(rawtext_arr):
-        if pd.isnull(rawtext):
-            result.append('')
-        else:
-            rawtext = rawtext.translate(None,string.punctuation).decode('utf8').split()
-            if len(rawtext)>0:
-                cleaned = [stemmer.stem(w) for w in rawtext]
-                result.append(' '.join(cleaned))
-            else:
-                result.append('')
-    return result
-
 def parse_abs(rawtext_arr):
     result = []
     for rawtext in rawtext_arr:
@@ -67,11 +52,11 @@ def parse_abs(rawtext_arr):
             words = np.delete(words,indices+1)
 
             # lowercase and remove punctuation
-            words = np.char.lower(np.char.translate(words,translator,string.punctuation)&(np.char.str_len(words)>=3))
+            words = np.char.lower(np.char.translate(words,translator))
 
             # remove all words that are purely alpha[are purely numeric]
             #words = words[~np.char.isnumeric(words)]
-            words = words[np.char.isalpha(words)]
+            words = words[np.char.isalpha(words)&(np.char.str_len(words)>=3)]
 
             # apply stemming and stopword removal
             #words = [stemmer.stem(w) for w in words]
