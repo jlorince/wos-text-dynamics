@@ -11,7 +11,6 @@ from tqdm import tqdm as tq
 basedir = 'E:/Users/jjl2228/WoS/'
 tmpdir = basedir+'temp/'
 
-r = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 translator = dict.fromkeys(i for i in range(sys.maxunicode) if unicodedata.category(chr(i)).startswith('P'))
 punct_string = ''
