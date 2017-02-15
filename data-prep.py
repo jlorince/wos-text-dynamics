@@ -1,7 +1,7 @@
 import numpy as np
 import gzip,time,datetime,string,signal,sys,pickle,codecs,csv
 import pandas as pd
-import multiproce as mp
+import multiprocess as mp
 from nltk.stem.snowball import EnglishStemmer
 from collections import Counter
 stemmer = EnglishStemmer()
