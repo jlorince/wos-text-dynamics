@@ -10,7 +10,7 @@ from tqdm import tqdm as tq
 
 basedir = 'E:/Users/jjl2228/WoS/'
 tmpdir = basedir+'temp/'
-
+debug=None
 
 translator = dict.fromkeys(i for i in range(sys.maxunicode) if unicodedata.category(chr(i)).startswith('P'))
 punct_string = ''
