@@ -83,6 +83,7 @@ def wrapper(f):
 if __name__=='__main__':
 
      df_metadata = pd.concat([pd.read_table(f,header=None,compression='gzip') for f in ['metadata_{}'.format(i) for i in range(24)]]).dropna()
+     df_metadata.columns = ['el_id','wos_id','abstract_text','formatted_text','raw_text']
 
 
     # files = glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/raw/matched/text_*')
