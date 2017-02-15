@@ -3,8 +3,8 @@ import gzip,time,datetime,string,signal,sys,pickle,codecs,csv,unicodedata
 import pandas as pd
 import multiprocess as mp
 from nltk.stem.snowball import EnglishStemmer
+from nltk.corpus import stopwords
 from collections import Counter
-stemmer = EnglishStemmer()
 from nltk.tokenize import word_tokenize
 from tqdm import tqdm as tq
 
