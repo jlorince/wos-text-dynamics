@@ -1,5 +1,5 @@
 import numpy as np
-import gzip,time,datetime,string,signal,sys,pickle,codecs,csv
+import gzip,time,datetime,string,signal,sys,pickle,codecs,csv,unicodedata
 import pandas as pd
 import multiprocess as mp
 from nltk.stem.snowball import EnglishStemmer
