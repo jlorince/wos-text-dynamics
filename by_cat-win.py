@@ -144,9 +144,58 @@ class process(object):
         entb = self.entropy(b)
         return entb-enta,self.jsd(a,b)
 
-        
-    def parse_cat(self,fi):
-        self.cat = fi[fi.rfind('/')+1:-4]
+    def parse_cat_elsevier(self,fi):
+        self.cat = fi[fi.rfind('\\')+1:]
+        with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=self.logger):
+
+            result_path = '{}results_{}_{}'.format(self.args.output,self.window,self.cat)
+            if os.path.exists(result_path):
+                self.logger.info('Category "{}" already done for window={}'.format(self.cat,self.window))
+                return 0
+
+            if self.args.null_model_mode in ('global','local'):
+                raise Exception("NULL MODEL MODE NOT IMPLEMENTED")
+
+            elif self.args.null_model_mode == 'fixed':
+
+                ent_result = []
+                ent_dif_result = []
+                jsd_result = []
+
+                with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                    sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
+                    df['abstract_parsed'] = df.abstract_parsed.apply(lambda x: [word for word in x.split() if word in self.vocabset])
+                    self.sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.abstract_parsed.apply(lambda x: len(x)).mean()).min()))
+                    self.logger.info('Fixed sample size DOCUMENTS for category {} = {}'.format(self.cat,sample_size))
+                    self.logger.info('Fixed sample size TOKENS for category {} = {}'.format(self.cat,self.sample_size_tokens))
+                    for i in range(self.args.null_bootstrap_samples):
+                        sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))
+                        # generate word distributions 
+                        word_dists = np.zeros((25,len(self.vocab)))
+                        for year,grp in sampled.groupby('year'):
+                            word_dists[year-1991] = self.termcounts(grp.abstract_parsed)
+                        ents,ent_difs,jsds = self.calc_measures(word_dists)
+                        ent_result.append(ents)
+                        ent_dif_result.append(ent_difs)
+                        jsd_result.append(jsds)
+
+            
+            with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                with open(result_path,'w') as out:
+
+                    if self.args.null_model_mode=='fixed':
+                        ent_result = np.vstack(ent_result)
+                        ent_dif_result = np.vstack(ent_dif_result)
+                        jsd_result = np.vstack(jsd_result)
+
+                        for measure,data in zip(('ent','ent_dif','jsd'),(ent_result,ent_dif_result,jsd_result)):
+                            m = data.mean(0)
+                            ci = 1.96 * data.std(0) / np.sqrt(self.args.null_bootstrap_samples)
+                            out.write("{}_m\t{}\n".format(measure,','.join(m.astype(str))))
+                            out.write("{}_c\t{}\n".format(measure,','.join(ci.astype(str))))
+
+    def parse_cat_wos(self,fi):
+        self.cat = fi[fi.rfind('\\')+1:-4]
         with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=self.logger):
 
             result_path = '{}results_{}_{}'.format(self.args.output,self.window,self.cat)
@@ -210,9 +259,6 @@ class process(object):
                         ent_dif_result.append(ent_difs)
                         jsd_result.append(jsds)
 
-
-
-
             
             with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=self.logger):
                 with open(result_path,'w') as out:
@@ -266,7 +312,8 @@ if __name__=='__main__':
     #parse.add_argument("-c", "--cats", help="path to pickled field-level dataframes", default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat',type=str)
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
     parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='fixed',type=str,choices=['global','local','fixed'])
-    parser.add_argument("-r", "--min_prop",help='pRoportion of year with least publications to establish fixed sample size ',default=0.5,type=float)
+    parser.add_argument("-r", "--min_prop",help='pRoportion of year with least publications to establish fixed sample size. If we pass a value greater than 1, convert to int and treat as discrete number of documents to smaple.',default=0.5,type=float)
+    parser.add_argument("-s","--data_source",help="Source of data (pickeld WoS abstracts, or Elsevier data in redis DB",default='wos',choices=['wos','elsevier'])
 
 
 
@@ -299,20 +346,27 @@ if __name__=='__main__':
     else:
         rootLogger.info('Generating new vocab file')
         vocab_dict ={}
-        for fpath in tq(glob.glob(args.datadir+'*.pkl')):
-            df = pd.read_pickle(fpath)
-            for abstract in tq(df.abstract):
-                for term in abstract.split():
-                    vocab_dict[term] = vocab_dict.get(term,0)+1
-        raw_term_counts = pd.Series(vocab_dict)  
+        for f in tq(glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_{}/global_term_counts_*')):
+            for line in open(f):
+                term,cnt = line.strip().split(',')
+                cnt = int(cnt)
+                vocab_dict[term] = vocab_dict.get(term,0)+cnt
+
+        # for fpath in tq(glob.glob(args.datadir+'*.pkl')):
+        #     df = pd.read_pickle(fpath)
+        #     for abstract in tq(df.abstract):
+        #         for term in abstract.split():
+        #             vocab_dict[term] = vocab_dict.get(term,0)+1
+        #raw_term_counts = pd.Series(vocab_dict)  
 
         # this is now handled in data-prep.py
         #stemmer = EnglishStemmer()
         #stop = set(stopwords.words('english'))
         #stop = stop.union([stemmer.stem(s) for s in stop])
-        pruned = raw_term_counts[raw_term_counts>=args.vocab_thresh]
+        #pruned = raw_term_counts[raw_term_counts>=args.vocab_thresh]
         #vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
-        vocab = sorted(pruned.index.values)
+
+        vocab = sorted([k for k,v in vocab_dict.items() if v>=args.vocab_thresh])
         rootLogger.info("Total vocab size= {}".format(len(vocab)))
 
     pool = mp.Pool(args.procs)
@@ -326,13 +380,7 @@ if __name__=='__main__':
 
     files = glob.glob(args.datadir+'*.pkl')
     for w in window_range:
-        # complete = 0
-        # def gen_wrapper(vocab,w,args,rootLogger):
-        #     def wrapper(fi):
-        #         processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
-        #         processor.parse_cat(fi)
-        #     return wrapper
-        # wrapper = gen_wrapper(vocab,w,args,rootLogger)
+
         processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
-        pool.map(processor.parse_cat,files,chunksize=len(files)//args.procs)
+        pool.map(processor.parse_cat_wos,files,chunksize=len(files)//args.procs)
 

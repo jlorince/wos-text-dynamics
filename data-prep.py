@@ -77,8 +77,8 @@ def process(year):
     with timed(desc=year,pad='----'):
         with timed('metadata loading',year=year):
             md_current = pd.read_table('{}WoS/parsed/metadata/{}.txt.gz'.format(basedir,year),header=None, nrows=debug,
-                                   names=["uid","date","pubtype","volume","issue","pages","paper_title","source_title","doctype"],
-                                  usecols=["uid","pubtype","paper_title","source_title","doctype"])
+                names=["uid","date","pubtype","volume","issue","pages","paper_title","source_title","doctype"],
+                usecols=["uid","pubtype","paper_title","source_title","doctype"])
         with timed('abstract loading',year=year):
             abs_current = pd.read_table('{}WoS/parsed/abstracts/{}.txt.gz'.format(basedir,year),header=None,names=['uid','abstract'], nrows=debug).dropna()
         with timed('abstract parsing',year=year):
@@ -124,7 +124,6 @@ if __name__=='__main__':
         result = []
         for year in tq(range(1991,2016)):
             result.append(pd.read_pickle('{}{}.pkl'.format(tmpdir,year)))
-            print(year,)
 
     with timed('word freq distribution'):
         for year,current in tq(zip(range(1991,2016),result)):
@@ -137,7 +136,7 @@ if __name__=='__main__':
 
             global_term_counts = pd.Series(termdict)
             #global_term_counts.to_csv('P:/Projects/WoS/wos-text-dynamics-data/global_term_counts_{}.csv'.format(year),encoding='utf8')
-            global_term_counts.to_csv('E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts/global_term_counts_{}.csv'.format(year),encoding='utf8')
+            global_term_counts.to_csv('E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_wos/global_term_counts_{}.csv'.format(year),encoding='utf8')
 
 
     with timed('dataframe concatenation'):
