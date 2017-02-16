@@ -368,6 +368,9 @@ if __name__=='__main__':
 
         vocab = sorted([k for k,v in vocab_dict.items() if v>=args.vocab_thresh])
         rootLogger.info("Total vocab size= {}".format(len(vocab)))
+        with open(vocab_path,'w') as out:
+            for term in vocab:
+                out.write(term+'\n')
 
     pool = mp.Pool(args.procs)
     if '_' in args.window:
