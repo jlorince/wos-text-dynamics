@@ -51,7 +51,7 @@ class timed(object):
 
 class process(object):
 
-    def __init__(self,vocab,window,args,logger):
+    def __init__(self,vocab,window,args):
         self.vocab = vocab
         self.window = window
         self.args = args
