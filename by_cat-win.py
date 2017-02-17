@@ -386,7 +386,7 @@ if __name__=='__main__':
     files = glob.glob(args.datadir+'*.pkl')
     for w in window_range:
 
-        processor = process(vocab=vocab,window=w,args=arg)
+        processor = process(vocab=vocab,window=w,args=args)
         pool.map(processor.parse_cat_wos,files,chunksize=len(files)//args.procs)
 
     try:
