@@ -11,6 +11,23 @@ from collections import Counter
 import multiprocess as mp
 from functools import partial
 
+def logger_setup():
+    pid = os.getpid()
+    now = datetime.datetime.now()
+    log_filename = now.strftime('%Y%m%d_%H%M%S_{}.log.part'.format(pid))
+    logFormatter = logging.Formatter("%(asctime)s\t[{}]\t[%(levelname)s]\t%(message)s".format(pid))
+    rootLogger = logging.getLogger()
+    fileHandler = logging.FileHandler(log_filename)
+    fileHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(fileHandler)
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(consoleHandler)
+    rootLogger.setLevel(logging.INFO)
+    return rootLogger
+
+logger = logger_setup()
+
 
 import time,datetime
 class timed(object):
@@ -30,13 +47,13 @@ class timed(object):
             self.log('{}{} complete in {}{}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),self.pad))
         else:
             self.log('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad))
-    
+
+
 class process(object):
 
     def __init__(self,vocab,window,args,logger):
         self.vocab = vocab
         self.window = window
-        self.logger = logger
         self.args = args
         if args.null_model_mode == 'fixed':
             self.vocabset = set(vocab)
@@ -72,7 +89,7 @@ class process(object):
         mx = len(word_dists)-(2*self.window-1)
         self.result = []
         for i in range(mx):
-            #with timed('Calc for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=self.logger):
+            #with timed('Calc for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=logger):
             a = np.sum(word_dists[i:i+self.window],axis=0)
             asm = float(a.sum())
             if asm ==0:
@@ -103,7 +120,7 @@ class process(object):
                 ent_difs.append(entb-enta)
                 jsds.append(self.jsd(aprop,bprop))
                 if self.args.null_model_mode == 'local':
-                    with timed('Local null model for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=self.logger):
+                    with timed('Local null model for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=logger):
                         combined_word_dist = (a+b).astype(int)
                         self.all_tokens = []
                         for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
@@ -146,11 +163,11 @@ class process(object):
 
     def parse_cat_elsevier(self,fi):
         self.cat = fi[fi.rfind('\\')+1:]
-        with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=self.logger):
+        with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=logger):
 
             result_path = '{}results_{}_{}'.format(self.args.output,self.window,self.cat)
             if os.path.exists(result_path):
-                self.logger.info('Category "{}" already done for window={}'.format(self.cat,self.window))
+                logger.info('Category "{}" already done for window={}'.format(self.cat,self.window))
                 return 0
 
             if self.args.null_model_mode in ('global','local'):
@@ -162,12 +179,12 @@ class process(object):
                 ent_dif_result = []
                 jsd_result = []
 
-                with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=logger):
                     sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
                     df['abstract_parsed'] = df.abstract_parsed.apply(lambda x: [word for word in x.split() if word in self.vocabset])
                     self.sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.abstract_parsed.apply(lambda x: len(x)).mean()).min()))
-                    self.logger.info('Fixed sample size DOCUMENTS for category {} = {}'.format(self.cat,sample_size))
-                    self.logger.info('Fixed sample size TOKENS for category {} = {}'.format(self.cat,self.sample_size_tokens))
+                    logger.info('Fixed sample size DOCUMENTS for category {} = {}'.format(self.cat,sample_size))
+                    logger.info('Fixed sample size TOKENS for category {} = {}'.format(self.cat,self.sample_size_tokens))
                     for i in range(self.args.null_bootstrap_samples):
                         sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))
                         # generate word distributions 
@@ -180,7 +197,7 @@ class process(object):
                         jsd_result.append(jsds)
 
             
-            with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+            with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=logger):
                 with open(result_path,'w') as out:
 
                     if self.args.null_model_mode=='fixed':
@@ -196,16 +213,16 @@ class process(object):
 
     def parse_cat_wos(self,fi):
         self.cat = fi[fi.rfind('\\')+1:-4]
-        with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=self.logger):
+        with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=logger):
 
             result_path = '{}results_{}_{}'.format(self.args.output,self.window,self.cat)
             if os.path.exists(result_path):
-                self.logger.info('Category "{}" already done for window={}'.format(self.cat,self.window))
+                logger.info('Category "{}" already done for window={}'.format(self.cat,self.window))
                 return 0
 
             df = pd.read_pickle(fi).dropna(subset=['abstract_parsed'])
             if len(df)==0:
-                self.logger.info('No data for category "{}"'.format(self.cat))
+                logger.info('No data for category "{}"'.format(self.cat))
                 return 0
 
             if self.args.null_model_mode in ('global','local'):
@@ -216,7 +233,7 @@ class process(object):
 
                 if self.args.null_model_mode == 'global':
 
-                    with timed('Running null model for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                    with timed('Running null model for {} (window={})'.format(self.cat,self.window),logger=logger):
                         # total token count by year
                         self.token_counts = word_dists.sum(1,dtype=int)
                         # generate giant array of every token in data (for shuffling by null model)
@@ -229,7 +246,7 @@ class process(object):
                         self.result = [self.shuffler(x) for x in range(self.args.null_bootstrap_samples)]
 
                 # calculate raw measures
-                with timed('Calculating raw measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                with timed('Calculating raw measures for {} (window={})'.format(self.cat,self.window),logger=logger):
                     ents,ent_difs,jsds = self.calc_measures(word_dists)
             
                 dist_path = '{}termdist_{}.npy'.format(self.args.output,self.cat)
@@ -242,12 +259,12 @@ class process(object):
                 ent_dif_result = []
                 jsd_result = []
 
-                with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+                with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=logger):
                     sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
                     df['abstract_parsed'] = df.abstract_parsed.apply(lambda x: [word for word in x.split() if word in self.vocabset])
                     self.sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.abstract_parsed.apply(lambda x: len(x)).mean()).min()))
-                    self.logger.info('Fixed sample size DOCUMENTS for category {} = {}'.format(self.cat,sample_size))
-                    self.logger.info('Fixed sample size TOKENS for category {} = {}'.format(self.cat,self.sample_size_tokens))
+                    logger.info('Fixed sample size DOCUMENTS for category {} = {}'.format(self.cat,sample_size))
+                    logger.info('Fixed sample size TOKENS for category {} = {}'.format(self.cat,self.sample_size_tokens))
                     for i in range(self.args.null_bootstrap_samples):
                         sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))
                         # generate word distributions 
@@ -260,7 +277,7 @@ class process(object):
                         jsd_result.append(jsds)
 
             
-            with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=self.logger):
+            with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=logger):
                 with open(result_path,'w') as out:
 
                     if self.args.null_model_mode=='fixed':
@@ -305,7 +322,6 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser("Script for calculating information theoretic measures of text evolution among WoS abstracts")
     parser.add_argument("-p", "--procs",help="specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
     parser.add_argument("-w", "--window", help="window size, enter a single value, range (x_y), or list (x,y,z)",type=str,default='1')
-    parser.add_argument("-l", "--logfile", help="prefix for logfile",type=str,default='')
     parser.add_argument("-o", "--output", help="output path for results",type=str,default='E:/Users/jjl2228/WoS/wos-text-dynamics-data/results/')
     parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=100)
     parser.add_argument("-d", "--datadir",help="root input data directory",default='E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat/',type=str)
@@ -320,33 +336,19 @@ if __name__=='__main__':
     args = parser.parse_args()
 
     ### LOGGING SETUP
-    now = datetime.datetime.now()
-    if args.logfile:
-        args.logfiles += '_'
-    log_filename = now.strftime('{}%Y%m%d_%H%M%S.log'.format(args.logfile))
-    #log_filename = now.strftime('{}%Y%m%d_%H%M%S.log'.format(args.logfile+'_{}_{}'.format(args.window,args.side)))
-    logFormatter = logging.Formatter("%(asctime)s\t[%(levelname)s]\t%(message)s")
-    rootLogger = logging.getLogger()
-    fileHandler = logging.FileHandler(log_filename)
-    fileHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(fileHandler)
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(consoleHandler)
-    rootLogger.setLevel(logging.INFO)
-
-    rootLogger.info(str(args))
+    
+    logger.info(str(args))
 
     ### Vocabulary setup
     vocab_path = args.datadir+'vocab_pruned_'+str(args.vocab_thresh)
     if os.path.exists(vocab_path):
-        rootLogger.info('Loading existing vocab file')
+        logger.info('Loading existing vocab file')
         vocab = [line.strip() for line in codecs.open(vocab_path,encoding='utf8')]
         #vocab = [line.strip() for line in open(vocab_path)]
     else:
-        rootLogger.info('Generating new vocab file')
+        logger.info('Generating new vocab file')
         vocab_dict ={}
-        for f in tq(glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_{}/global_term_counts_*')):
+        for f in tq(glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_{}/global_term_counts_*'.format(args.data_source))):
             for line in open(f):
                 term,cnt = line.strip().split(',')
                 cnt = int(cnt)
@@ -367,7 +369,7 @@ if __name__=='__main__':
         #vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
 
         vocab = sorted([k for k,v in vocab_dict.items() if v>=args.vocab_thresh])
-        rootLogger.info("Total vocab size= {}".format(len(vocab)))
+        logger.info("Total vocab size= {}".format(len(vocab)))
         with open(vocab_path,'w') as out:
             for term in vocab:
                 out.write(term+'\n')
@@ -384,6 +386,20 @@ if __name__=='__main__':
     files = glob.glob(args.datadir+'*.pkl')
     for w in window_range:
 
-        processor = process(vocab=vocab,window=w,args=args,logger=rootLogger)
+        processor = process(vocab=vocab,window=w,args=arg)
         pool.map(processor.parse_cat_wos,files,chunksize=len(files)//args.procs)
+
+    try:
+        pool.close()
+        pool.terminate()
+    except:
+        pass
+
+    # consolidate
+    files = glob.glob('*.log.part')
+    log_df = pd.concat([pd.read_table(f,header=None,parse_dates=[0]) for f in files])
+    for f in files: os.remove(f)
+    new_log_filename= datetime.datetime.now().strftime('%Y%m%d_%H%M%S.log')
+    log_df.sort_values(0).to_csv(new_log_filename,sep='\t',index=False)
+
 
