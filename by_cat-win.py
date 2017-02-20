@@ -352,10 +352,9 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser("Script for calculating information theoretic measures of text evolution among WoS abstracts")
     parser.add_argument("-p", "--procs",help="specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
     parser.add_argument("-w", "--window", help="window size, enter a single value, range (x_y), or list (x,y,z)",type=str,default='1')
-    parser.add_argument("-o", "--output", help="output path for results",type=str,default='E:/Users/jjl2228/WoS/wos-text-dynamics-data/results/')
+    parser.add_argument("-o", "--output", help="output path for results",default=None)
     parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=100)
     parser.add_argument("-d", "--datadir",help="root input data directory",default=None,type=str)
-    #parse.add_argument("-c", "--cats", help="path to pickled field-level dataframes", default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat',type=str)
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
     parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='fixed',type=str,choices=['global','local','fixed'])
     parser.add_argument("-r", "--min_prop",help='pRoportion of year with least publications to establish fixed sample size. If we pass a value greater than 1, convert to int and treat as discrete number of documents to smaple.',default=0.5,type=float)
@@ -364,10 +363,13 @@ if __name__=='__main__':
 
 
     args = parser.parse_args()
+    # set conditional argument defaults
     if args.datadir is None:
         args.datadir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat_{}/'.format(args.data_source)
     if args.min_prop>1:
         args.min_prop = int(args.min_prop)
+    if args.output is None:
+        args.output = 'E:/Users/jjl2228/WoS/wos-text-dynamics/results/by-cat-results-{}/'.format(args.data_source)
 
     ### LOGGING SETUP
     
