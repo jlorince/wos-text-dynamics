@@ -62,8 +62,7 @@ class process(object):
     def entropy(self,arr,base=2):
         return scipy_entropy(arr,base=base)
 
-    # Given a pandas.Series of procesed abstracts, return the word frequency distribution 
-    # across all abstracts (limited to our chosen vocabulary)
+
     def termcounts(self,abs_ser,):
         if self.args.null_model_mode=='fixed':
             abstracts = []
@@ -162,7 +161,7 @@ class process(object):
         return entb-enta,self.jsd(a,b)
 
     def parse_cat_elsevier(self,fi):
-        self.cat = fi[fi.rfind('\\')+1:]
+        self.cat = fi[fi.rfind('\\')+1:fi.find('.txt.gz')]
         with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=logger):
 
             result_path = '{}results_{}_{}'.format(self.args.output,self.window,self.cat)
@@ -171,26 +170,56 @@ class process(object):
                 return 0
 
             if self.args.null_model_mode in ('global','local'):
-                raise Exception("NULL MODEL MODE NOT IMPLEMENTED")
+                raise Exception('NULL MODEL MODE "{}" NOT IMPLEMENTED'.format(self.args.null_model_mode))
 
             elif self.args.null_model_mode == 'fixed':
+
+                #df = pd.read_table(fi,compression='gzip',header=None,names=['uid','el_id','year','abstract_text','formatted_text','raw_text','abs_only','text'],dtype={'uid':str,'el_id':int,'year':int,'abstract_text':int,'formatted_text':int,'raw_text':int,'abs_only':int,'text':str}).dropna()
+                #df = df[df.formatted_text==1]
+                df = pd.read_pickle(fi)
+                df = df[(df.raw_token_count>0)&(df.formatted_text==1)&(df.year<2014)] # for now let's look at the overlap
 
                 ent_result = []
                 ent_dif_result = []
                 jsd_result = []
 
                 with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=logger):
-                    sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
-                    df['abstract_parsed'] = df.abstract_parsed.apply(lambda x: [word for word in x.split() if word in self.vocabset])
-                    self.sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.abstract_parsed.apply(lambda x: len(x)).mean()).min()))
+                    
+                    ### HERE IS WHERE WE NEED REFINEMENTS
+
+                    if type(self.args.min_prop)==float:
+                        sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
+                        df['text'] = df.text.apply(lambda x: [word for word in x.split() if word in self.vocabset])
+                        self.sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.text.apply(lambda x: len(x)).mean()).min()))
+
+                    elif type(self.args.min_prop)==int:
+                        counts_by_year = df.year.value_counts()
+                        downsample = counts_by_year[counts_by_year >= (2*self.args.min_prop)].index
+                        text_dict = {}
+                        token_counts_by_uid = {}
+                        for line in gzip.open('E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat_elsevier/{}.txt.gz'.format(self.cat)):
+                            line = line.decode('utf8').strip().split('\t')
+                            if line[7]:
+                                text = [word for word in line[7].split() if word in self.vocabset]
+                                if text:
+                                    uid = line[0]
+                                    text_dict[uid] = text
+                                    token_counts_by_uid[uid] = len(text)
+                        # join token counts
+                        token_counts_by_uid = pd.Series(token_counts_by_uid,name='parsed_token_count')
+                        df = df.join(token_counts_by_uid,on='uid')
+                        sample_size = max(self.args.min_prop, int(round(df.year.value_counts().min() * 0.5)))
+                        self.sample_size_tokens = int(round(df.groupby('year').parsed_token_count.mean().min()))
+                    
+
                     logger.info('Fixed sample size DOCUMENTS for category {} = {}'.format(self.cat,sample_size))
                     logger.info('Fixed sample size TOKENS for category {} = {}'.format(self.cat,self.sample_size_tokens))
                     for i in range(self.args.null_bootstrap_samples):
-                        sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))
+                        sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size,replace=False) if len(x)>=2*sample_size else None)
                         # generate word distributions 
-                        word_dists = np.zeros((25,len(self.vocab)))
+                        word_dists = np.zeros((64,len(self.vocab)))
                         for year,grp in sampled.groupby('year'):
-                            word_dists[year-1991] = self.termcounts(grp.abstract_parsed)
+                            word_dists[year-1950] = self.termcounts([text_dict[uid] for uid in grp.uid])
                         ents,ent_difs,jsds = self.calc_measures(word_dists)
                         ent_result.append(ents)
                         ent_dif_result.append(ent_difs)
@@ -210,6 +239,7 @@ class process(object):
                             ci = 1.96 * data.std(0) / np.sqrt(self.args.null_bootstrap_samples)
                             out.write("{}_m\t{}\n".format(measure,','.join(m.astype(str))))
                             out.write("{}_c\t{}\n".format(measure,','.join(ci.astype(str))))
+
 
     def parse_cat_wos(self,fi):
         self.cat = fi[fi.rfind('\\')+1:-4]
@@ -324,7 +354,7 @@ if __name__=='__main__':
     parser.add_argument("-w", "--window", help="window size, enter a single value, range (x_y), or list (x,y,z)",type=str,default='1')
     parser.add_argument("-o", "--output", help="output path for results",type=str,default='E:/Users/jjl2228/WoS/wos-text-dynamics-data/results/')
     parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=100)
-    parser.add_argument("-d", "--datadir",help="root input data directory",default='E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat/',type=str)
+    parser.add_argument("-d", "--datadir",help="root input data directory",default=None,type=str)
     #parse.add_argument("-c", "--cats", help="path to pickled field-level dataframes", default='/backup/home/jared/storage/wos-text-dynamics-data/by-cat',type=str)
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
     parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='fixed',type=str,choices=['global','local','fixed'])
@@ -334,6 +364,10 @@ if __name__=='__main__':
 
 
     args = parser.parse_args()
+    if args.datadir is None:
+        args.datadir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat_{}/'.format(args.data_source)
+    if args.min_prop>1:
+        args.min_prop = int(args.min_prop)
 
     ### LOGGING SETUP
     
@@ -383,7 +417,11 @@ if __name__=='__main__':
     else:
         window_range = [int(args.window)]
 
-    files = glob.glob(args.datadir+'*.pkl')
+    if args.data_source == 'wos':
+        files = glob.glob(args.datadir+'*.pkl')
+    elif args.data_source == 'elsevier':
+        files = glob.glob(args.datadir+'*.txt.gz')
+    
     for w in window_range:
 
         processor = process(vocab=vocab,window=w,args=args)
@@ -395,7 +433,13 @@ if __name__=='__main__':
     except:
         pass
 
-    # consolidate
+## This happens out of the main block to close all handlers
+for handler in logger.handlers:
+    handler.close()
+    logger.removeHandler(handler)
+
+## now back in the main process we consolidate the logs
+if __name__=='__main__':
     files = glob.glob('*.log.part')
     log_df = pd.concat([pd.read_table(f,header=None,parse_dates=[0]) for f in files])
     for f in files: os.remove(f)
