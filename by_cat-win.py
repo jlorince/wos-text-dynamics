@@ -358,7 +358,7 @@ if __name__=='__main__':
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
     parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='fixed',type=str,choices=['global','local','fixed'])
     parser.add_argument("-r", "--min_prop",help='pRoportion of year with least publications to establish fixed sample size. If we pass a value greater than 1, convert to int and treat as discrete number of documents to smaple.',default=0.5,type=float)
-    parser.add_argument("-s","--data_source",help="Source of data (pickeld WoS abstracts, or Elsevier data in redis DB",default='wos',choices=['wos','elsevier'])
+    parser.add_argument("-s","--data_source",help="Source of data (pickeld WoS abstracts, or Elsevier data in gzipped text files",default='wos',choices=['wos','elsevier'])
 
 
 
@@ -384,8 +384,9 @@ if __name__=='__main__':
     else:
         logger.info('Generating new vocab file')
         vocab_dict ={}
-        for f in tq(glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_{}/global_term_counts_*'.format(args.data_source))):
-            for line in open(f):
+        # NOTE THIS LOOKS AT JUST FORMATTED TEXT
+        for f in tq(glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_{}/global_term_counts_formatted_*'.format(args.data_source))):
+            for line in open(f,encoding='utf8'):
                 term,cnt = line.strip().split(',')
                 cnt = int(cnt)
                 vocab_dict[term] = vocab_dict.get(term,0)+cnt
