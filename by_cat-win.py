@@ -419,10 +419,8 @@ if __name__=='__main__':
     else:
         window_range = [int(args.window)]
 
-    if args.data_source == 'wos':
-        files = glob.glob(args.datadir+'*.pkl')
-    elif args.data_source == 'elsevier':
-        files = glob.glob(args.datadir+'*.txt.gz')
+    files = glob.glob(args.datadir+'*.pkl')
+
     
     for w in window_range:
 
