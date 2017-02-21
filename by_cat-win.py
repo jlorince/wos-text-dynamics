@@ -407,7 +407,7 @@ if __name__=='__main__':
 
         vocab = sorted([k for k,v in vocab_dict.items() if v>=args.vocab_thresh])
         logger.info("Total vocab size= {}".format(len(vocab)))
-        with open(vocab_path,'w') as out:
+        with open(vocab_path,'w',encoding='utf8') as out:
             for term in vocab:
                 out.write(term+'\n')
 
