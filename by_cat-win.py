@@ -161,7 +161,7 @@ class process(object):
         return entb-enta,self.jsd(a,b)
 
     def parse_cat_elsevier(self,fi):
-        self.cat = fi[fi.rfind('\\')+1:fi.find('.txt.gz')]
+        self.cat = fi[fi.rfind('\\')+1:-4]
         with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=logger):
 
             result_path = '{}results_{}_{}'.format(self.args.output,self.window,self.cat)
