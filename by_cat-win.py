@@ -178,6 +178,10 @@ class process(object):
                 #df = df[df.formatted_text==1]
                 df = pd.read_pickle(fi)
                 df = df[(df.raw_token_count>0)&(df.formatted_text==1)&(df.year<2014)] # for now let's look at the overlap
+                if len(df)==0:
+                    logger.info('No data after filtering for category "{}" (window={})'.format(self.cat,self.window))
+                    return 0
+
 
                 ent_result = []
                 ent_dif_result = []
@@ -216,6 +220,10 @@ class process(object):
                     logger.info('Fixed sample size TOKENS for category {} = {}'.format(self.cat,self.sample_size_tokens))
                     for i in range(self.args.null_bootstrap_samples):
                         sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size,replace=False) if len(x)>=2*sample_size else None)
+                        if len(sampled)==0:
+                            logger.info('No data after filtering for category "{}" (window={})'.format(self.cat,self.window))
+                            return 0
+
                         # generate word distributions 
                         word_dists = np.zeros((64,len(self.vocab)))
                         for year,grp in sampled.groupby('year'):
