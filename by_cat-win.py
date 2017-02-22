@@ -203,7 +203,7 @@ class process(object):
                         token_counts_by_uid = {}
                         for line in gzip.open('E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat_elsevier/{}.txt.gz'.format(self.cat)):
                             line = line.decode('utf8').strip().split('\t')
-                            if line[7]:
+                            if len(line)==8 and line[7]:
                                 text = [word for word in line[7].split() if word in self.vocabset]
                                 if text:
                                     uid = line[0]
