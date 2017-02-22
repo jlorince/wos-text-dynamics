@@ -429,7 +429,10 @@ if __name__=='__main__':
     for w in window_range:
 
         processor = process(vocab=vocab,window=w,args=args)
-        pool.map(processor.parse_cat_wos,files,chunksize=len(files)//args.procs)
+        if args.data_source == 'wos':
+            pool.map(processor.parse_cat_wos,files,chunksize=len(files)//args.procs)
+        elif args.data_source == 'elsevier':
+            pool.map(processor.parse_cat_elsevier,files,chunksize=len(files)//args.procs)
 
     try:
         pool.close()
