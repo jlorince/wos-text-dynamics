@@ -365,7 +365,10 @@ if __name__=='__main__':
     args = parser.parse_args()
     # set conditional argument defaults
     if args.datadir is None:
-        args.datadir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat_{}/'.format(args.data_source)
+        if args.data_source == 'wos':
+            args.datadir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat_wos/'
+        elif args.data_source == 'elsevier':
+            args.datadir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/metadata/'
     if args.min_prop>1:
         args.min_prop = int(args.min_prop)
     if args.output is None:
@@ -379,7 +382,7 @@ if __name__=='__main__':
     vocab_path = args.datadir+'vocab_pruned_'+str(args.vocab_thresh)
     if os.path.exists(vocab_path):
         logger.info('Loading existing vocab file')
-        vocab = [line.strip() for line in codecs.open(vocab_path,encoding='utf8')]
+        vocab = [line.strip() for line in open(vocab_path,encoding='utf8')]
         #vocab = [line.strip() for line in open(vocab_path)]
     else:
         logger.info('Generating new vocab file')
