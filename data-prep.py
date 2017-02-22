@@ -62,12 +62,6 @@ def parse_abs(rawtext_arr):
             #words = [stemmer.stem(w) for w in words]
             current = []
             for w in words:
-                if len(stemmer.stem(w))<3:
-                    print(w)
-                    1/0
-                else:
-                    continue
-                w = stemmer.stem(w)
                 if w not in stop:
                     current.append(w)
 
