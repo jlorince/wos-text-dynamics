@@ -380,7 +380,7 @@ if __name__=='__main__':
     if args.min_prop>1:
         args.min_prop = int(args.min_prop)
     if args.output is None:
-        args.output = 'E:/Users/jjl2228/WoS/wos-text-dynamics/results/by-cat-results-{}/'.format(args.data_source)
+        args.output = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/results/by-cat-results-{}/'.format(args.data_source)
 
     ### LOGGING SETUP
     
