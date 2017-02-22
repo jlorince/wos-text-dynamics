@@ -364,7 +364,7 @@ if __name__=='__main__':
     parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=100)
     parser.add_argument("-d", "--datadir",help="root input data directory",default=None,type=str)
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
-    parser.add_argument("-n", "--null_model_mode",help='null model mode ("global" or "local")',default='fixed',type=str,choices=['global','local','fixed'])
+    parser.add_argument("-n", "--null_model_mode",help='null model mode --> Fixed ("global" and "local" deprecated)',default='fixed',type=str,choices=['global','local','fixed'])
     parser.add_argument("-r", "--min_prop",help='pRoportion of year with least publications to establish fixed sample size. If we pass a value greater than 1, convert to int and treat as discrete number of documents to smaple.',default=0.5,type=float)
     parser.add_argument("-s","--data_source",help="Source of data (pickeld WoS abstracts, or Elsevier data in gzipped text files",default='wos',choices=['wos','elsevier'])
 
@@ -396,7 +396,11 @@ if __name__=='__main__':
         logger.info('Generating new vocab file')
         vocab_dict ={}
         # NOTE THIS LOOKS AT JUST FORMATTED TEXT
-        for f in tq(glob.glob('E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_{}/global_term_counts_formatted_*'.format(args.data_source))):
+        if ars.data_source == 'elsevier':
+            d = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_elsevier/global_term_counts_formatted_*'
+        elif ars.data_source == 'wos':
+            d = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_wos/global_term_counts_*'
+        for f in tq(glob.glob()):
             for line in open(f,encoding='utf8'):
                 term,cnt = line.strip().split(',')
                 cnt = int(cnt)
