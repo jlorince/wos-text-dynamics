@@ -64,7 +64,7 @@ def process(input_tuple):
                     print(s)
                     log.write(s+'\n')
                     log.flush()
-                print("{}/{} ({:2f}%) ".format(i,total,100*(i/total))) # DEBUG
+                #print("{}/{} ({:2f}%) ".format(i,total,100*(i/total))) # DEBUG
             s = "Idx {} DONE: {}/{} ({:2f}%) records processed\n".format(idx,i,total,100*(i/total))
             print(s)
             log.write(s+'\n')
