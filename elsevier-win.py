@@ -71,7 +71,11 @@ def parse_xml(filename):
                 t = node.text.strip()
                 if t:
                     all_text.append(t)
-    # did we find an formatted text?
+            if node.tail
+                tail = node.tail.strip()
+                if tail:
+                    all_text.append(tail)
+    # did we find any formatted text?
     if len(all_text)>l:
         found_formatted_text = True
     l = len(all_text)
