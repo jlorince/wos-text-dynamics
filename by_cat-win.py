@@ -191,7 +191,7 @@ class process(object):
 
             df = df[df.parsed_token_count >= 2*self.args.n_token_samples]
             if len(df)==0:
-                logger.info('No data after doc smaple filtering for category "{}" (window={})'.format(self.cat,self.window))
+                logger.info('No data after token sample filtering for category "{}" (window={})'.format(self.cat,self.window))
                 return 0
 
             
@@ -200,7 +200,7 @@ class process(object):
             for i in range(self.args.null_bootstrap_samples):
                 sampled = df.groupby('year').apply(lambda x: x.sample(n=self.args.n_doc_samples,replace=False) if len(x)>=2*self.args.n_doc_samples else None)
                 if len(sampled)==0:
-                    logger.info('No data after doc smaple filtering for category "{}" (window={})'.format(self.cat,self.window))
+                    logger.info('No data after doc sample filtering for category "{}" (window={})'.format(self.cat,self.window))
                     return 0
 
                 # generate word distributions 
@@ -272,7 +272,8 @@ if __name__=='__main__':
         if args.data_source == 'elsevier':
             d = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_elsevier/global_term_counts_formatted_*'
         elif args.data_source == 'wos':
-            d = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_wos/global_term_counts_*'
+            #d = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_wos/global_term_counts_*'
+            d = 'P:/Projects/WoS/wos-text-dynamics-data/termcounts_wos/global_term_counts_*'
         for f in tq(glob.glob(d)):
             for line in open(f,encoding='utf8'):
                 term,cnt = line.strip().split(',')
