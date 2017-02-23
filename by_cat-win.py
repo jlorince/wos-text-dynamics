@@ -188,15 +188,13 @@ class process(object):
 
                     df['abstract_parsed'] = df.abstract_parsed.apply(lambda x: [word for word in x.split() if word in self.vocabset])
                     df['parsed_token_count'] = df.abstract_parsed.apply(lambda x: len(x))
-                    df = df[df.parsed_token_count >= 2*self.args.n_token_samples]
-
 
             df = df[df.parsed_token_count >= 2*self.args.n_token_samples]
             
             n_years = {'elsevier':64,'wos':25}[self.args.data_source]
             start_year = {'elsevier':1950,'wos':1991}[self.args.data_source]
             for i in range(self.args.null_bootstrap_samples):
-                sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size,replace=False) if len(x)>=2*sample_size else None)
+                sampled = df.groupby('year').apply(lambda x: x.sample(n=self.args.n_doc_samples,replace=False) if len(x)>=2*self.args.n_doc_samples else None)
                 if len(sampled)==0:
                     logger.info('No data after filtering for category "{}" (window={})'.format(self.cat,self.window))
                     return 0
