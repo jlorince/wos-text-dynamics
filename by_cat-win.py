@@ -159,7 +159,7 @@ class process(object):
                 df = df.dropna(subset=['abstract_parsed'])
             
             if len(df)==0:
-                logger.info('No data after filtering for category "{}" (window={})'.format(self.cat,self.window))
+                logger.info('No data after initial filtering for category "{}" (window={})'.format(self.cat,self.window))
                 return 0
 
             ent_result = []
@@ -190,13 +190,17 @@ class process(object):
                     df['parsed_token_count'] = df.abstract_parsed.apply(lambda x: len(x))
 
             df = df[df.parsed_token_count >= 2*self.args.n_token_samples]
+            if len(df)==0:
+                logger.info('No data after doc smaple filtering for category "{}" (window={})'.format(self.cat,self.window))
+                return 0
+
             
             n_years = {'elsevier':64,'wos':25}[self.args.data_source]
             start_year = {'elsevier':1950,'wos':1991}[self.args.data_source]
             for i in range(self.args.null_bootstrap_samples):
                 sampled = df.groupby('year').apply(lambda x: x.sample(n=self.args.n_doc_samples,replace=False) if len(x)>=2*self.args.n_doc_samples else None)
                 if len(sampled)==0:
-                    logger.info('No data after filtering for category "{}" (window={})'.format(self.cat,self.window))
+                    logger.info('No data after doc smaple filtering for category "{}" (window={})'.format(self.cat,self.window))
                     return 0
 
                 # generate word distributions 
@@ -238,8 +242,6 @@ if __name__=='__main__':
     parser.add_argument("-t", "--n_token_samples",help='Number of tokens to sample from each document',default=100,type=int)
     parser.add_argument("-s","--data_source",help="Source of data (pickeld WoS abstracts, or Elsevier data in gzipped text files",default='wos',choices=['wos','elsevier'])
 
-
-
     args = parser.parse_args()
     # set conditional argument defaults
     if args.datadir is None:
@@ -251,6 +253,7 @@ if __name__=='__main__':
     #     args.min_prop = int(args.min_prop)
     if args.output is None:
         args.output = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/results/by-cat-results-{}/'.format(args.data_source)
+
 
     ### LOGGING SETUP
     
@@ -266,11 +269,11 @@ if __name__=='__main__':
         logger.info('Generating new vocab file')
         vocab_dict ={}
         # NOTE THIS LOOKS AT JUST FORMATTED TEXT
-        if ars.data_source == 'elsevier':
+        if args.data_source == 'elsevier':
             d = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_elsevier/global_term_counts_formatted_*'
-        elif ars.data_source == 'wos':
+        elif args.data_source == 'wos':
             d = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_wos/global_term_counts_*'
-        for f in tq(glob.glob()):
+        for f in tq(glob.glob(d)):
             for line in open(f,encoding='utf8'):
                 term,cnt = line.strip().split(',')
                 cnt = int(cnt)
