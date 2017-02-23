@@ -50,9 +50,9 @@ class timed(object):
         logger.info('{} started...'.format(self.desc))
     def __exit__(self, type, value, traceback):
         if len(self.kwargs)==0:
-            logger.info'{}{} complete in {}{}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),self.pad))
+            logger.info('{}{} complete in {}{}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),self.pad))
         else:
-            logger.info'{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.items()]),self.pad))
+            logger.info('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.items()]),self.pad))
 
 
 def parse_text(line):
@@ -95,7 +95,7 @@ def wrapper(f):
         for i,line in enumerate(gzip.open(f),1):
             parse_text(line.decode('utf8'))
             if i%1000==0:
-                logger.info"{}: {} lines processed (overall: {})".format(f,i,r.dbsize()))
+                logger.info("{}: {} lines processed (overall: {})".format(f,i,r.dbsize()))
 
         
 if __name__=='__main__':
