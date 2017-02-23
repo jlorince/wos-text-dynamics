@@ -294,7 +294,7 @@ if __name__=='__main__':
     else:
         window_range = [int(args.window)]
 
-    if arg.data_source == 'wos':
+    if args.data_source == 'wos':
         files = glob.glob(args.datadir+'*.trimmed.pkl')
     elif args.data_source == 'elsevier':
         files = glob.glob(args.datadir+'*.pkl')
