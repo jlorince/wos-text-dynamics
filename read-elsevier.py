@@ -133,6 +133,8 @@ def parse_xml(text):
 
 if __name__=='__main__':
 
+    ### ADJUST SO WE USE ALL N PROCESSES CORRECTLY
+
     if len(sys.argv)>1:
         procs = int(sys.argv[1])
     else:

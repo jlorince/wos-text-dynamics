@@ -145,5 +145,5 @@ if __name__=='__main__':
         for cat in tq(all_cats):
             cat_df = df[df.categories.apply(lambda x: cat in x)]
             #cat_df.to_pickle('P:/Projects/WoS/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
-            cat_df.to_pickle('E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat/{}.pkl'.format(cat))
+            cat_df.to_pickle('E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat_wos/{}.pkl'.format(cat))
 

@@ -55,24 +55,19 @@ class process(object):
         self.vocab = vocab
         self.window = window
         self.args = args
-        if args.null_model_mode == 'fixed':
-            self.vocabset = set(vocab)
+        self.vocabset = set(vocab)
 
 
     def entropy(self,arr,base=2):
         return scipy_entropy(arr,base=base)
 
-
     def termcounts(self,abs_ser,):
-        if self.args.null_model_mode=='fixed':
-            abstracts = []
-            for abstract in abs_ser:
-                if len(abstract)>self.sample_size_tokens:
-                    abstract = list(np.random.choice(abstract,self.sample_size_tokens,replace=False))
-                abstracts += abstract
-            tc = Counter(abstracts)
-        else:
-            tc = Counter(' '.join(abs_ser).split())
+        abstracts = []
+        for abstract in abs_ser:
+            #if len(abstract)>self.sample_size_tokens:
+            abstract = list(np.random.choice(abstract,self.args.n_token_samples,replace=False))
+            abstracts += abstract
+        tc = Counter(abstracts)
         arr = np.array([tc.get(k,0) for k in self.vocab])
         return arr 
 
@@ -111,22 +106,10 @@ class process(object):
             if asm==0 or bsm==0:
                 ent_difs.append(np.nan)
                 jsds.append(np.nan)
-                if self.args.null_model_mode == 'local':
-                    x = [(np.nan,np.nan) for _ in xrange(self.args.null_bootstrap_samples)]
-                    self.result.append([np.array(r) for r in zip(*x)])
 
             else:
                 ent_difs.append(entb-enta)
                 jsds.append(self.jsd(aprop,bprop))
-                if self.args.null_model_mode == 'local':
-                    with timed('Local null model for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=logger):
-                        combined_word_dist = (a+b).astype(int)
-                        self.all_tokens = []
-                        for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
-                            self.all_tokens += [term]*cnt
-                        self.all_tokens = np.array(self.all_tokens)
-                        x = [self.local_shuffler(int(asm)) for _ in xrange(self.args.null_bootstrap_samples)]
-                        self.result.append([np.array(r) for r in zip(*x)])
                 
         return np.array(ents+apnd),np.array(ent_difs),np.array(jsds)
             
@@ -160,7 +143,7 @@ class process(object):
         entb = self.entropy(b)
         return entb-enta,self.jsd(a,b)
 
-    def parse_cat_elsevier(self,fi):
+    def parse_cat(self,fi):
         self.cat = fi[fi.rfind('\\')+1:-4]
         with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=logger):
 
@@ -169,191 +152,80 @@ class process(object):
                 logger.info('Category "{}" already done for window={}'.format(self.cat,self.window))
                 return 0
 
-            if self.args.null_model_mode in ('global','local'):
-                raise Exception('NULL MODEL MODE "{}" NOT IMPLEMENTED'.format(self.args.null_model_mode))
-
-            elif self.args.null_model_mode == 'fixed':
-
-                #df = pd.read_table(fi,compression='gzip',header=None,names=['uid','el_id','year','abstract_text','formatted_text','raw_text','abs_only','text'],dtype={'uid':str,'el_id':int,'year':int,'abstract_text':int,'formatted_text':int,'raw_text':int,'abs_only':int,'text':str}).dropna()
-                #df = df[df.formatted_text==1]
-                df = pd.read_pickle(fi)
+            df = pd.read_pickle(fi)
+            if self.args.data_source == 'elsevier':
                 df = df[(df.raw_token_count>0)&(df.formatted_text==1)&(df.year<2014)] # for now let's look at the overlap
-                if len(df)==0:
+            elif self.args.data_source == 'wos':
+                df = df.dropna(subset=['abstract_parsed'])
+            
+            if len(df)==0:
+                logger.info('No data after filtering for category "{}" (window={})'.format(self.cat,self.window))
+                return 0
+
+            ent_result = []
+            ent_dif_result = []
+            jsd_result = []
+
+            with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=logger):
+                
+                if self.args.data_source == 'elsevier':
+
+                    text_dict = {}
+                    token_counts_by_uid = {}
+                    for line in gzip.open('E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat_elsevier/{}.txt.gz'.format(self.cat)):
+                        line = line.decode('utf8').strip().split('\t')
+                        if len(line)==8 and line[7]:
+                            text = [word for word in line[7].split() if word in self.vocabset]
+                            if text:
+                                uid = line[0]
+                                text_dict[uid] = text
+                                token_counts_by_uid[uid] = len(text)
+                    # join token counts
+                    token_counts_by_uid = pd.Series(token_counts_by_uid,name='parsed_token_count')
+                    df = df.join(token_counts_by_uid,on='uid',how='inner')
+
+                elif self.args.data_source == 'wos':
+
+                    df['abstract_parsed'] = df.abstract_parsed.apply(lambda x: [word for word in x.split() if word in self.vocabset])
+                    df['parsed_token_count'] = df.abstract_parsed.apply(lambda x: len(x))
+                    df = df[df.parsed_token_count >= 2*self.args.n_token_samples]
+
+
+            df = df[df.parsed_token_count >= 2*self.args.n_token_samples]
+            
+            n_years = {'elsevier':64,'wos':25}[self.args.data_source]
+            start_year = {'elsevier':1950,'wos':1991}[self.args.data_source]
+            for i in range(self.args.null_bootstrap_samples):
+                sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size,replace=False) if len(x)>=2*sample_size else None)
+                if len(sampled)==0:
                     logger.info('No data after filtering for category "{}" (window={})'.format(self.cat,self.window))
                     return 0
 
-
-                ent_result = []
-                ent_dif_result = []
-                jsd_result = []
-
-                with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=logger):
-                    
-                    ### HERE IS WHERE WE NEED REFINEMENTS
-
-                    if type(self.args.min_prop)==float:
-                        sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
-                        df['text'] = df.text.apply(lambda x: [word for word in x.split() if word in self.vocabset])
-                        self.sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.text.apply(lambda x: len(x)).mean()).min()))
-
-                    elif type(self.args.min_prop)==int:
-                        counts_by_year = df.year.value_counts()
-                        downsample = counts_by_year[counts_by_year >= (2*self.args.min_prop)].index
-                        text_dict = {}
-                        token_counts_by_uid = {}
-                        for line in gzip.open('E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat_elsevier/{}.txt.gz'.format(self.cat)):
-                            line = line.decode('utf8').strip().split('\t')
-                            if len(line)==8 and line[7]:
-                                text = [word for word in line[7].split() if word in self.vocabset]
-                                if text:
-                                    uid = line[0]
-                                    text_dict[uid] = text
-                                    token_counts_by_uid[uid] = len(text)
-                        # join token counts
-                        token_counts_by_uid = pd.Series(token_counts_by_uid,name='parsed_token_count')
-                        df = df.join(token_counts_by_uid,on='uid')
-                        sample_size = max(self.args.min_prop, int(round(df.year.value_counts().min() * 0.5)))
-                        self.sample_size_tokens = int(round(df.groupby('year').parsed_token_count.mean().min()))
-                    
-
-                    logger.info('Fixed sample size DOCUMENTS for category {} = {}'.format(self.cat,sample_size))
-                    logger.info('Fixed sample size TOKENS for category {} = {}'.format(self.cat,self.sample_size_tokens))
-                    for i in range(self.args.null_bootstrap_samples):
-                        sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size,replace=False) if len(x)>=2*sample_size else None)
-                        if len(sampled)==0:
-                            logger.info('No data after filtering for category "{}" (window={})'.format(self.cat,self.window))
-                            return 0
-
-                        # generate word distributions 
-                        word_dists = np.zeros((64,len(self.vocab)))
-                        for year,grp in sampled.groupby('year'):
-                            word_dists[year-1950] = self.termcounts([text_dict[uid] for uid in grp.uid])
-                        ents,ent_difs,jsds = self.calc_measures(word_dists)
-                        ent_result.append(ents)
-                        ent_dif_result.append(ent_difs)
-                        jsd_result.append(jsds)
-
-            
-            with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=logger):
-                with open(result_path,'w') as out:
-
-                    if self.args.null_model_mode=='fixed':
-                        ent_result = np.vstack(ent_result)
-                        ent_dif_result = np.vstack(ent_dif_result)
-                        jsd_result = np.vstack(jsd_result)
-
-                        for measure,data in zip(('ent','ent_dif','jsd'),(ent_result,ent_dif_result,jsd_result)):
-                            m = data.mean(0)
-                            ci = 1.96 * data.std(0) / np.sqrt(self.args.null_bootstrap_samples)
-                            out.write("{}_m\t{}\n".format(measure,','.join(m.astype(str))))
-                            out.write("{}_c\t{}\n".format(measure,','.join(ci.astype(str))))
-
-
-    def parse_cat_wos(self,fi):
-        self.cat = fi[fi.rfind('\\')+1:-4]
-        with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=logger):
-
-            result_path = '{}results_{}_{}'.format(self.args.output,self.window,self.cat)
-            if os.path.exists(result_path):
-                logger.info('Category "{}" already done for window={}'.format(self.cat,self.window))
-                return 0
-
-            df = pd.read_pickle(fi).dropna(subset=['abstract_parsed'])
-            if len(df)==0:
-                logger.info('No data for category "{}"'.format(self.cat))
-                return 0
-
-            if self.args.null_model_mode in ('global','local'):
                 # generate word distributions 
-                word_dists = np.zeros((25,len(self.vocab)))
-                for year,grp in df.groupby('year'):
-                    word_dists[year-1991] = self.termcounts(grp.abstract_parsed)
-
-                if self.args.null_model_mode == 'global':
-
-                    with timed('Running null model for {} (window={})'.format(self.cat,self.window),logger=logger):
-                        # total token count by year
-                        self.token_counts = word_dists.sum(1,dtype=int)
-                        # generate giant array of every token in data (for shuffling by null model)
-                        combined_word_dist = word_dists.sum(0,dtype=int)
-                        self.all_tokens = []
-                        for term,cnt in enumerate(combined_word_dist):#,total=len(combined_word_dist):
-                            self.all_tokens += [term]*cnt
-                        self.all_tokens = np.array(self.all_tokens)
-
-                        self.result = [self.shuffler(x) for x in range(self.args.null_bootstrap_samples)]
-
-                # calculate raw measures
-                with timed('Calculating raw measures for {} (window={})'.format(self.cat,self.window),logger=logger):
-                    ents,ent_difs,jsds = self.calc_measures(word_dists)
-            
-                dist_path = '{}termdist_{}.npy'.format(self.args.output,self.cat)
-                if not os.path.exists(dist_path):
-                    np.save(dist_path,word_dists)   
-
-            elif self.args.null_model_mode == 'fixed':
-
-                ent_result = []
-                ent_dif_result = []
-                jsd_result = []
-
-                with timed('Sampling measures for {} (window={})'.format(self.cat,self.window),logger=logger):
-                    sample_size = int(round(df.year.value_counts().min() * self.args.min_prop)) 
-                    df['abstract_parsed'] = df.abstract_parsed.apply(lambda x: [word for word in x.split() if word in self.vocabset])
-                    self.sample_size_tokens = int(round(df.groupby('year').apply(lambda grp: grp.abstract_parsed.apply(lambda x: len(x)).mean()).min()))
-                    logger.info('Fixed sample size DOCUMENTS for category {} = {}'.format(self.cat,sample_size))
-                    logger.info('Fixed sample size TOKENS for category {} = {}'.format(self.cat,self.sample_size_tokens))
-                    for i in range(self.args.null_bootstrap_samples):
-                        sampled = df.groupby('year').apply(lambda x: x.sample(n=sample_size))
-                        # generate word distributions 
-                        word_dists = np.zeros((25,len(self.vocab)))
-                        for year,grp in sampled.groupby('year'):
-                            word_dists[year-1991] = self.termcounts(grp.abstract_parsed)
-                        ents,ent_difs,jsds = self.calc_measures(word_dists)
-                        ent_result.append(ents)
-                        ent_dif_result.append(ent_difs)
-                        jsd_result.append(jsds)
+                word_dists = np.zeros((n_years,len(self.vocab)))
+                for year,grp in sampled.groupby('year'):
+                    if self.args.data_source == 'elsevier':
+                        word_dists[year-start_year] = self.termcounts([text_dict[uid] for uid in grp.uid])
+                    elif self.args.data_source == 'wos':
+                        word_dists[year-start_year] = self.termcounts(grp.abstract_parsed)
+                ents,ent_difs,jsds = self.calc_measures(word_dists)
+                ent_result.append(ents)
+                ent_dif_result.append(ent_difs)
+                jsd_result.append(jsds)                        
 
             
             with timed('Writing results for {} (window={})'.format(self.cat,self.window),logger=logger):
                 with open(result_path,'w') as out:
+                    ent_result = np.vstack(ent_result)
+                    ent_dif_result = np.vstack(ent_dif_result)
+                    jsd_result = np.vstack(jsd_result)
 
-                    if self.args.null_model_mode=='fixed':
-                        ent_result = np.vstack(ent_result)
-                        ent_dif_result = np.vstack(ent_dif_result)
-                        jsd_result = np.vstack(jsd_result)
+                    for measure,data in zip(('ent','ent_dif','jsd'),(ent_result,ent_dif_result,jsd_result)):
+                        m = data.mean(0)
+                        ci = 1.96 * data.std(0) / np.sqrt(self.args.null_bootstrap_samples)
+                        out.write("{}_m\t{}\n".format(measure,','.join(m.astype(str))))
+                        out.write("{}_c\t{}\n".format(measure,','.join(ci.astype(str))))
 
-                        for measure,data in zip(('ent','ent_dif','jsd'),(ent_result,ent_dif_result,jsd_result)):
-                            m = data.mean(0)
-                            ci = 1.96 * data.std(0) / np.sqrt(self.args.null_bootstrap_samples)
-                            out.write("{}_m\t{}\n".format(measure,','.join(m.astype(str))))
-                            out.write("{}_c\t{}\n".format(measure,','.join(ci.astype(str))))
-
-                    else:
-                        
-                        for measure in ('ents','ent_difs','jsds'):
-                            out.write("{}\t{}\n".format(measure,','.join(vars()[measure].astype(str))))
-                        
-                        if self.args.null_model_mode == 'global':
-                            for i,measure in enumerate(['entropy-null','entdif-null','jsd-null']):
-                                samples = np.array([r[i] for r in self.result])
-                                m = samples.mean(0)
-                                ci = 1.96 * samples.std(0) / np.sqrt(self.args.null_bootstrap_samples)
-                                out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
-                                out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
-                        
-                        elif self.args.null_model_mode == 'local':
-                            for i,measure in enumerate(['entdif-null','jsd-null']):
-                                samples = np.vstack([r[i] for r in self.result])
-                                m = samples.mean(1)
-                                ci = 1.96 * samples.std(1) / np.sqrt(self.args.null_bootstrap_samples)
-                                out.write('{}_m\t{}\n'.format(measure,','.join(m.astype(str))))
-                                out.write('{}_c\t{}\n'.format(measure,','.join(ci.astype(str))))
-
-
-        #rootLogger.info('Category "{}" processed successfully for window size={}'.format(cat_name,self.window))
-        return 1
- 
 
 if __name__=='__main__':
 
@@ -364,8 +236,8 @@ if __name__=='__main__':
     parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=100)
     parser.add_argument("-d", "--datadir",help="root input data directory",default=None,type=str)
     parser.add_argument("-v", "--vocab_thresh",help="vocabulary trimming threshold",default=100,type=int)
-    parser.add_argument("-n", "--null_model_mode",help='null model mode --> Fixed ("global" and "local" deprecated)',default='fixed',type=str,choices=['global','local','fixed'])
-    parser.add_argument("-r", "--min_prop",help='pRoportion of year with least publications to establish fixed sample size. If we pass a value greater than 1, convert to int and treat as discrete number of documents to smaple.',default=0.5,type=float)
+    parser.add_argument("-n", "--n_doc_samples",help='Number of documents to sample each year',default=100,type=int)
+    parser.add_argument("-t", "--n_token_samples",help='Number of tokens to sample from each document',default=100,type=int)
     parser.add_argument("-s","--data_source",help="Source of data (pickeld WoS abstracts, or Elsevier data in gzipped text files",default='wos',choices=['wos','elsevier'])
 
 
@@ -377,8 +249,8 @@ if __name__=='__main__':
             args.datadir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/by-cat_wos/'
         elif args.data_source == 'elsevier':
             args.datadir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/metadata/'
-    if args.min_prop>1:
-        args.min_prop = int(args.min_prop)
+    # if args.min_prop>1:
+    #     args.min_prop = int(args.min_prop)
     if args.output is None:
         args.output = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/results/by-cat-results-{}/'.format(args.data_source)
 
@@ -406,20 +278,6 @@ if __name__=='__main__':
                 cnt = int(cnt)
                 vocab_dict[term] = vocab_dict.get(term,0)+cnt
 
-        # for fpath in tq(glob.glob(args.datadir+'*.pkl')):
-        #     df = pd.read_pickle(fpath)
-        #     for abstract in tq(df.abstract):
-        #         for term in abstract.split():
-        #             vocab_dict[term] = vocab_dict.get(term,0)+1
-        #raw_term_counts = pd.Series(vocab_dict)  
-
-        # this is now handled in data-prep.py
-        #stemmer = EnglishStemmer()
-        #stop = set(stopwords.words('english'))
-        #stop = stop.union([stemmer.stem(s) for s in stop])
-        #pruned = raw_term_counts[raw_term_counts>=args.vocab_thresh]
-        #vocab = sorted([term for term in pruned.index if term not in stop and type(term)==unicode and term.isalpha()])
-
         vocab = sorted([k for k,v in vocab_dict.items() if v>=args.vocab_thresh])
         logger.info("Total vocab size= {}".format(len(vocab)))
         with open(vocab_path,'w',encoding='utf8') as out:
@@ -441,10 +299,7 @@ if __name__=='__main__':
     for w in window_range:
 
         processor = process(vocab=vocab,window=w,args=args)
-        if args.data_source == 'wos':
-            pool.map(processor.parse_cat_wos,files,chunksize=len(files)//args.procs)
-        elif args.data_source == 'elsevier':
-            pool.map(processor.parse_cat_elsevier,files,chunksize=len(files)//args.procs)
+        pool.map(processor.parse_cat,files,chunksize=len(files)//args.procs)
 
     try:
         pool.close()
