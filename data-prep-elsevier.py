@@ -9,6 +9,24 @@ from nltk.tokenize import word_tokenize
 from tqdm import tqdm as tq
 import redis
 
+def logger_setup():
+    pid = os.getpid()
+    now = datetime.datetime.now()
+    log_filename = now.strftime('data_prep_%Y%m%d_%H%M%S_{}.log.part'.format(pid))
+    logFormatter = logging.Formatter("%(asctime)s\t[{}]\t[%(levelname)s]\t%(message)s".format(pid))
+    rootLogger = logging.getLogger()
+    fileHandler = logging.FileHandler(log_filename)
+    fileHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(fileHandler)
+    consoleHandler = logging.StreamHandler()
+    consoleHandler.setFormatter(logFormatter)
+    rootLogger.addHandler(consoleHandler)
+    rootLogger.setLevel(logging.INFO)
+    return rootLogger
+
+logger = logger_setup()
+
+
 r = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 translator = dict.fromkeys(i for i in range(sys.maxunicode) if unicodedata.category(chr(i)).startswith('P'))
@@ -29,12 +47,12 @@ class timed(object):
         self.pad = pad
     def __enter__(self):
         self.start = time.time()
-        print('{} started...'.format(self.desc))
+        logger.info('{} started...'.format(self.desc))
     def __exit__(self, type, value, traceback):
         if len(self.kwargs)==0:
-            print('{}{} complete in {}{}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),self.pad))
+            logger.info'{}{} complete in {}{}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),self.pad))
         else:
-            print('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.items()]),self.pad))
+            logger.info'{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.items()]),self.pad))
 
 
 def parse_text(line):
@@ -77,7 +95,7 @@ def wrapper(f):
         for i,line in enumerate(gzip.open(f),1):
             parse_text(line.decode('utf8'))
             if i%1000==0:
-                print("{}: {} lines processed (overall: {})".format(f,i,r.dbsize()))
+                logger.info"{}: {} lines processed (overall: {})".format(f,i,r.dbsize()))
 
         
 if __name__=='__main__':
