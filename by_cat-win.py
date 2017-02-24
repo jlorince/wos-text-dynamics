@@ -11,6 +11,22 @@ from collections import Counter
 import multiprocess as mp
 from functools import partial
 
+"""
+# RUN THIS TO HANDLE LOGS WHEN WE'RE DONE:
+import glob,pandas,os,datetime
+files = glob.glob('*.log.part')
+dfs = []
+for f in files:
+    try:
+        dfs.append(pandas.read_table(f,header=None,parse_dates=[0]))
+    except pandas.io.common.EmptyDataError:
+        continue
+log_df = pandas.concat(dfs)
+for f in files: os.remove(f)
+new_log_filename= datetime.datetime.now().strftime('%Y%m%d_%H%M%S.log')
+log_df.sort_values(0).to_csv(new_log_filename,sep='\t',index=False,header=False)
+"""
+
 def logger_setup():
     pid = os.getpid()
     now = datetime.datetime.now()
@@ -317,17 +333,17 @@ if __name__=='__main__':
     except:
         pass
 
-## This happens out of the main block to close all handlers
-for handler in logger.handlers:
-    handler.close()
-    logger.removeHandler(handler)
+# ## This happens out of the main block to close all handlers
+# for handler in logger.handlers:
+#     handler.close()
+#     logger.removeHandler(handler)
 
 ## now back in the main process we consolidate the logs
-if __name__=='__main__':
-    files = glob.glob('*.log.part')
-    log_df = pd.concat([pd.read_table(f,header=None,parse_dates=[0]) for f in files])
-    for f in files: os.remove(f)
-    new_log_filename= datetime.datetime.now().strftime('%Y%m%d_%H%M%S.log')
-    log_df.sort_values(0).to_csv(new_log_filename,sep='\t',index=False)
+# if __name__=='__main__':
+#     files = glob.glob('*.log.part')
+#     log_df = pd.concat([pd.read_table(f,header=None,parse_dates=[0]) for f in files])
+#     for f in files: os.remove(f)
+#     new_log_filename= datetime.datetime.now().strftime('%Y%m%d_%H%M%S.log')
+#     log_df.sort_values(0).to_csv(new_log_filename,sep='\t',index=False)
 
 
