@@ -83,21 +83,26 @@ class process(object):
         mx = len(word_dists)-(2*self.window-1)
         self.result = []
         for i in range(mx):
-            #with timed('Calc for {}: {}/{} (window={})'.format(self.cat,i+1,mx+1,self.window),logger=logger):
-            a = np.sum(word_dists[i:i+self.window],axis=0)
-            asm = float(a.sum())
-            if asm ==0:
-                enta = np.nan       
-            else:
+            
+            a_block = word_dists[i:i+self.window]
+            if np.all(np.sum(a_block,axis=1)>0):
+                a = np.sum(a_block,axis=0)
+                asm = float(a.sum())
                 aprop = a/asm
                 enta = self.entropy(aprop)
-            b = np.sum(word_dists[i+self.window:i+self.window*2],axis=0)
-            bsm = float(b.sum())
-            if bsm == 0:
-                entb = np.nan
             else:
+                enta = np.nan
+                asm = 0
+            
+            b_block = word_dists[i+self.window:i+self.window*2]
+            if np.all(np.sum(b_block,axis=1)>0):
+                b = np.sum(b_block,axis=0)
+                bsm = float(b.sum())
                 bprop = b/bsm
                 entb = self.entropy(bprop)
+            else:
+                entb = np.nan
+                bsm = 0
 
             ents.append(enta)
             if i+self.window>=mx:
