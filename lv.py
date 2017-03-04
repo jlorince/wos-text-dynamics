@@ -38,7 +38,7 @@ if __name__ == '__main__':
         # (this is handled more smoothly by argparse when calling from command line)
 
         outdim = 2
-        threads = workers
+        threads = int(workers)
         samples = -1
         prop = -1
         alpha = -1
