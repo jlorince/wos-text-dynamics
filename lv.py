@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm as tq
 import LargeVis
 
-if __name__ '__main__':
+if __name__ == '__main__':
 
     infile,sample_size,workers = sys.argv[1:]
     if ',' in sample_size:
