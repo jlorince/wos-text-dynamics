@@ -101,9 +101,8 @@ def parse_xml(text):
         body = tree.find('.//{*}'+textblock)
         if body:
             for para in body.findall('.//{*}'+ptype):
-                text = para.text.strip()
-                if text:
-                    all_text.append(text)
+                if para.text:
+                    all_text.append(para.text.strip())
                 for child in para:
                     if '}cross-ref' in child.tag:
                         citations = child.attrib['refid']
@@ -113,14 +112,7 @@ def parse_xml(text):
                             if author_name:
                                 all_text.append(author_name)
                     if child.tail:
-                        tail = child.tail.strip()
-                        if tail:
-                            #print(child.tag)
-                            #print(tail)
-                            all_text.append(tail)
-
-
-
+                        all_text.append(child.tail.strip())
 
     #rawtext = np.array(' '.join(all_text).split())
     if all_text:
