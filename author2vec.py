@@ -148,7 +148,7 @@ def parse_xml(text):
 
     #rawtext = np.array(' '.join(all_text).split())
     if all_text:
-        rawtext = word_tokenize((' '.join(all_text)).decode('utf8'))
+        rawtext = word_tokenize((' '.join(all_text)))
         return rawtext
     else:
         return None
