@@ -1,3 +1,4 @@
+from __future__ import print_function
 import gzip,codecs,time,datetime,glob,logging,string,os,pymssql,sys
 from tqdm import tqdm as tq
 from lxml import etree
