@@ -81,7 +81,7 @@ def parse_xml(text):
 
     ## Check for raw text
     if tree.find('.//{*}raw-text') is not None:
-        pass#return None
+        return None
 
 
     # build reference dict
