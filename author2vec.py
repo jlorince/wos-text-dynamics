@@ -56,7 +56,7 @@ def process(input_tuple):
                     continue
                 wos_id = id_dict.get(FileID,'')
                 if wos_id is not '':
-                    matched_out.write("{}\t{}\n".format(wos_id,' '.join(rawtext)).encode('utf8'))
+                    matched_out.write("{}\t{}\t{}\n".format(wos_id,FileID,' '.join(rawtext)).encode('utf8'))
                 else:
                     unmatched_out.write("{}\t{}\n".format(FileID,' '.join(rawtext)).encode('utf8'))
                 
@@ -77,73 +77,49 @@ def process(input_tuple):
 def parse_xml(text):
     tree = etree.fromstring(text)
 
-    all_text = [] 
+        all_text = [] 
 
-    ## Check for raw text
-    for rawtext in tree.findall('.//{*}raw-text'):
-        return None
+        ## Check for raw text
+        for rawtext in tree.findall('.//{*}raw-text'):
+            #return None
+            pass
 
-    # build reference dict
-    bibdict = {}
-    for ref in tree.findall('.//{*}bib-reference'):
-        k = ref.get('id')
-        a = ref.find('.//{*}author')
-        try:
-            given_name = '_'.join(a.find('{*}given-name').text.split())
-            surname = ' '.join(a.find('{*}surname').text.split())
-        except:
-            continue
-        bibdict[k] = "author|{}|{}".format(given_name,surname)
+        # build reference dict
+        bibdict = {}
+        for ref in tree.findall('.//{*}bib-reference'):
+            k = ref.get('id')
+            a = ref.find('.//{*}author')
+            try:
+                given_name = '_'.join(a.find('{*}given-name').text.split())
+                surname = ' '.join(a.find('{*}surname').text.split())
+            except:
+                continue
+            bibdict[k] = "author|{}|{}".format(given_name,surname)
+
+
+        for textblock,ptype in (('abstract','simple-para'),('body','para')):
+            body = tree.find('.//{*}'+textblock)
+            for para in body.findall('.//{*}'+ptype):
+                text = para.text.strip()
+                if text:
+                    all_text.append(text)
+                for child in para:
+                    if '}cross-ref' in child.tag:
+                        citations = child.attrib['refid']
+                        first_citation = citations.split()[0]
+                        if first_citation.startswith('bib'):
+                            author_name = bibdict.get(first_citation)
+                            if author_name:
+                                all_text.append(author_name)
+                    if child.tail:
+                        tail = child.tail.strip()
+                        if tail:
+                            #print(child.tag)
+                            #print(tail)
+                            all_text.append(tail)
 
 
 
-    for abstract in tree.findall('.//{*}abstract'):
-        for node in abstract.iter('*'):
-            if '}cross-ref' in node.tag:
-                citations = node.attrib['refid']
-                first_citation = citations.split()[0]
-                if first_citation.startswith('bib'):
-                    author_name = bibdict.get(first_citation)
-                    if author_name:
-                        all_text.append(author_name)
-            #elif "para" in node.tag:
-            if 'para' in node.tag:
-                if node.text:
-                    #print(node.tag)
-                    t = node.text.strip()
-                    #print(t)
-                    if t:
-                        all_text.append(t)
-            if node.tail:
-                tail = node.tail.strip()
-                if tail:
-                    all_text.append(tail)
- 
-
-    ## Check for formatted text
-    for body in tree.findall('.//{*}body'):
-        for node in body.iter('*'):
-            if '}cross-ref' in node.tag:
-                citations = node.attrib['refid']
-                first_citation = citations.split()[0]
-                if first_citation.startswith('bib'):
-                    author_name = bibdict.get(first_citation)
-                    if author_name:
-                        all_text.append(author_name)
-            if "para" in node.tag:
-            #else:
-                if node.text:
-                    #print(node.tag)
-                    t = node.text.strip()
-                    #print(t)
-                    if t:
-                        all_text.append(t)
-            if node.tail:
-                tail = node.tail.strip()
-                if tail:
-                    #print(node.tag)
-                    #print(tail)
-                    all_text.append(tail)
 
     #rawtext = np.array(' '.join(all_text).split())
     if all_text:
