@@ -80,8 +80,8 @@ def parse_xml(text):
     all_text = [] 
 
     ## Check for raw text
-    if tree.find('.//{*}raw-text') is None:
-        return None
+    if tree.find('.//{*}raw-text') is not None:
+        pass#return None
 
 
     # build reference dict
@@ -99,7 +99,7 @@ def parse_xml(text):
 
     for textblock,ptype in (('abstract','simple-para'),('body','para')):
         body = tree.find('.//{*}'+textblock)
-        if body:
+        if body is not None:
             for para in body.findall('.//{*}'+ptype):
                 if para.text:
                     all_text.append(para.text.strip())
