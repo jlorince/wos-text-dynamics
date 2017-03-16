@@ -89,11 +89,11 @@ def parse_xml(text):
         k = ref.get('id')
         a = ref.find('.//{*}author')
         try:
-            given_name = a.find('{*}given-name').text
-            surname = a.find('{*}surname').text
+            given_name = '_'.join(a.find('{*}given-name').text.split())
+            surname = ' '.join(a.find('{*}surname').text.split())
         except:
             continue
-        bibdict[k] = "author_{}_{}".format(given_name,surname)
+        bibdict[k] = "author|{}|{}".format(given_name,surname)
 
 
 
