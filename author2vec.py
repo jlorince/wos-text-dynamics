@@ -99,24 +99,25 @@ def parse_xml(text):
 
     for textblock,ptype in (('abstract','simple-para'),('body','para')):
         body = tree.find('.//{*}'+textblock)
-        for para in body.findall('.//{*}'+ptype):
-            text = para.text.strip()
-            if text:
-                all_text.append(text)
-            for child in para:
-                if '}cross-ref' in child.tag:
-                    citations = child.attrib['refid']
-                    first_citation = citations.split()[0]
-                    if first_citation.startswith('bib'):
-                        author_name = bibdict.get(first_citation)
-                        if author_name:
-                            all_text.append(author_name)
-                if child.tail:
-                    tail = child.tail.strip()
-                    if tail:
-                        #print(child.tag)
-                        #print(tail)
-                        all_text.append(tail)
+        if body:
+            for para in body.findall('.//{*}'+ptype):
+                text = para.text.strip()
+                if text:
+                    all_text.append(text)
+                for child in para:
+                    if '}cross-ref' in child.tag:
+                        citations = child.attrib['refid']
+                        first_citation = citations.split()[0]
+                        if first_citation.startswith('bib'):
+                            author_name = bibdict.get(first_citation)
+                            if author_name:
+                                all_text.append(author_name)
+                    if child.tail:
+                        tail = child.tail.strip()
+                        if tail:
+                            #print(child.tag)
+                            #print(tail)
+                            all_text.append(tail)
 
 
 
