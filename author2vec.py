@@ -77,46 +77,46 @@ def process(input_tuple):
 def parse_xml(text):
     tree = etree.fromstring(text)
 
-        all_text = [] 
+    all_text = [] 
 
-        ## Check for raw text
-        for rawtext in tree.findall('.//{*}raw-text'):
-            #return None
-            pass
-
-        # build reference dict
-        bibdict = {}
-        for ref in tree.findall('.//{*}bib-reference'):
-            k = ref.get('id')
-            a = ref.find('.//{*}author')
-            try:
-                given_name = '_'.join(a.find('{*}given-name').text.split())
-                surname = ' '.join(a.find('{*}surname').text.split())
-            except:
-                continue
-            bibdict[k] = "author|{}|{}".format(given_name,surname)
+    ## Check for raw text
+    if tree.find('.//{*}raw-text'):
+        return None
 
 
-        for textblock,ptype in (('abstract','simple-para'),('body','para')):
-            body = tree.find('.//{*}'+textblock)
-            for para in body.findall('.//{*}'+ptype):
-                text = para.text.strip()
-                if text:
-                    all_text.append(text)
-                for child in para:
-                    if '}cross-ref' in child.tag:
-                        citations = child.attrib['refid']
-                        first_citation = citations.split()[0]
-                        if first_citation.startswith('bib'):
-                            author_name = bibdict.get(first_citation)
-                            if author_name:
-                                all_text.append(author_name)
-                    if child.tail:
-                        tail = child.tail.strip()
-                        if tail:
-                            #print(child.tag)
-                            #print(tail)
-                            all_text.append(tail)
+    # build reference dict
+    bibdict = {}
+    for ref in tree.findall('.//{*}bib-reference'):
+        k = ref.get('id')
+        a = ref.find('.//{*}author')
+        try:
+            given_name = '_'.join(a.find('{*}given-name').text.split())
+            surname = ' '.join(a.find('{*}surname').text.split())
+        except:
+            continue
+        bibdict[k] = "author|{}|{}".format(given_name,surname)
+
+
+    for textblock,ptype in (('abstract','simple-para'),('body','para')):
+        body = tree.find('.//{*}'+textblock)
+        for para in body.findall('.//{*}'+ptype):
+            text = para.text.strip()
+            if text:
+                all_text.append(text)
+            for child in para:
+                if '}cross-ref' in child.tag:
+                    citations = child.attrib['refid']
+                    first_citation = citations.split()[0]
+                    if first_citation.startswith('bib'):
+                        author_name = bibdict.get(first_citation)
+                        if author_name:
+                            all_text.append(author_name)
+                if child.tail:
+                    tail = child.tail.strip()
+                    if tail:
+                        #print(child.tag)
+                        #print(tail)
+                        all_text.append(tail)
 
 
 
