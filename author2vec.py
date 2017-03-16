@@ -40,8 +40,8 @@ def process(input_tuple):
     cursor.execute("SELECT FileID, PaperContent FROM [Papers].[dbo].[Papers] where FileID>{} and FileID<={}".format(min_id,max_id))
 
     with timed('Processing idx {}'.format(idx)):
-        with gzip.open("{}matched/text_{}".format(ddir,idx),'w') as matched_out,\
-             gzip.open("{}unmatched/text_{}".format(ddir,idx),'w') as unmatched_out,\
+        with gzip.open("{}matched/text_{}".format(ddir,idx),'wb') as matched_out,\
+             gzip.open("{}unmatched/text_{}".format(ddir,idx),'wb') as unmatched_out,\
              open("{}log_{}".format(ddir,idx),'w') as log:
             for i,(FileID,PaperContent) in enumerate(cursor,1):
                 # KLUDGE
@@ -148,7 +148,7 @@ def parse_xml(text):
 
     #rawtext = np.array(' '.join(all_text).split())
     if all_text:
-        rawtext = word_tokenize(' '.join(all_text))
+        rawtext = word_tokenize((' '.join(all_text)).decode('utf8'))
         return rawtext
     else:
         return None
