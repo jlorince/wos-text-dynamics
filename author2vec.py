@@ -3,7 +3,7 @@ import gzip,codecs,time,datetime,glob,logging,string,os,pymssql,sys
 from tqdm import tqdm as tq
 from lxml import etree
 from nltk.tokenize import word_tokenize
-import multiprocessing as mp
+import multiprocess as mp
 import numpy as np
 import pandas as pd
 
@@ -40,8 +40,8 @@ def process(input_tuple):
     cursor.execute("SELECT FileID, PaperContent FROM [Papers].[dbo].[Papers] where FileID>{} and FileID<={}".format(min_id,max_id))
 
     with timed('Processing idx {}'.format(idx)):
-        with gzip.open("{}matched/text_{}".format(ddir,idx),'wb') as matched_out,\
-             gzip.open("{}unmatched/text_{}".format(ddir,idx),'wb') as unmatched_out,\
+        with gzip.open("{}matched/text_{}".format(ddir,idx),'w') as matched_out,\
+             gzip.open("{}unmatched/text_{}".format(ddir,idx),'w') as unmatched_out,\
              open("{}log_{}".format(ddir,idx),'w') as log:
             for i,(FileID,PaperContent) in enumerate(cursor,1):
                 # KLUDGE
@@ -56,9 +56,9 @@ def process(input_tuple):
                     continue
                 wos_id = id_dict.get(FileID,'')
                 if wos_id is not '':
-                    matched_out.write(u"{}\t{}\n".format(wos_id,u' '.join(rawtext)).encode('utf8'))
+                    matched_out.write("{}\t{}\n".format(wos_id,' '.join(rawtext)).encode('utf8'))
                 else:
-                    unmatched_out.write(u"{}\t{}\n".format(FileID,u' '.join(rawtext)).encode('utf8'))
+                    unmatched_out.write("{}\t{}\n".format(FileID,' '.join(rawtext)).encode('utf8'))
                 
                 if i%1000==0:
                     s = "Idx {}: {}/{} ({:2f}%) records processed".format(idx,i,total,100*(i/total))
@@ -147,7 +147,7 @@ def parse_xml(text):
 
     #rawtext = np.array(' '.join(all_text).split())
     if all_text:
-        rawtext = word_tokenize((' '.join(all_text)))
+        rawtext = word_tokenize(' '.join(all_text))
         return rawtext
     else:
         return None
