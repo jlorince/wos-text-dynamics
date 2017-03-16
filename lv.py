@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
         # now we write the data to file in the required LargeVis format (which requires a header with the number of items and the dimensionality of the feature vectors)
         #with open('/backup/home/jared/lv_format.txt','w') as out:
-        with open('/backup/home/jared/lv/lv_format.txt','w') as out:
+        with open('/tmp/lv_format.txt','w') as out:
             out.write("{}\t{}\n".format(*features.shape))
             for row in tq(features):
                 out.write('\t'.join(row.astype(str))+'\n')
@@ -48,7 +48,7 @@ if __name__ == '__main__':
         gamma = -1
         perp = -1
 
-        LargeVis.loadfile("/backup/home/jared/lv/lv_format.txt")
+        LargeVis.loadfile("/tmp/lv_format.txt")
 
         Y = LargeVis.run(outdim, threads, samples, prop, alpha, trees, neg, neigh, gamma, perp)
 
