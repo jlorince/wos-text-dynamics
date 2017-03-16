@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 
 server,user,password = [line.strip() for line in open('server_credentials.txt')]
-ddir = "P:/Projects/WoS/wos-text-dynamics-data/elsevier/author2vec/"
+#ddir = "P:/Projects/WoS/wos-text-dynamics-data/elsevier/author2vec/"
+ddir = "E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/author2vec/"
 
 id_dict = {}
 for line in gzip.open('data/SD_WoS_id_match_DEDUPED.txt.gz'):
