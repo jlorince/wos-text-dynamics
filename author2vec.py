@@ -3,7 +3,7 @@ import gzip,codecs,time,datetime,glob,logging,string,os,pymssql,sys
 from tqdm import tqdm as tq
 from lxml import etree
 from nltk.tokenize import word_tokenize
-import multiprocess as mp
+import multiprocessing as mp
 import numpy as np
 import pandas as pd
 
