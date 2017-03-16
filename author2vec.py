@@ -80,7 +80,7 @@ def parse_xml(text):
     all_text = [] 
 
     ## Check for raw text
-    if tree.find('.//{*}raw-text'):
+    if tree.find('.//{*}raw-text') is None:
         return None
 
 
@@ -103,7 +103,7 @@ def parse_xml(text):
             for para in body.findall('.//{*}'+ptype):
                 if para.text:
                     all_text.append(para.text.strip())
-                for child in para:
+                for child in para.iterchildren():
                     if '}cross-ref' in child.tag:
                         citations = child.attrib['refid']
                         first_citation = citations.split()[0]
