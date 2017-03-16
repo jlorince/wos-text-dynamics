@@ -56,10 +56,9 @@ def process(input_tuple):
                     continue
                 wos_id = id_dict.get(FileID,'')
                 if wos_id is not '':
-                    matched_out.write("{}\t{}\n".format(wos_id,' '.join(rawtext)).encode('utf8'))
+                    matched_out.write(u"{}\t{}\n".format(wos_id,u' '.join(rawtext)).encode('utf8'))
                 else:
-                    unmatched_out.write("{}\t{}\n".format(FileID,' '.join(rawtext)).encode('utf8'))
-                meta_out.write("{}\t{}\t{}\t{}\t{}\n".format(FileID,wos_id,int(found_abstract),int(found_formatted_text),int(found_rawtext)).encode('utf8'))
+                    unmatched_out.write(u"{}\t{}\n".format(FileID,u' '.join(rawtext)).encode('utf8'))
                 
                 if i%1000==0:
                     s = "Idx {}: {}/{} ({:2f}%) records processed".format(idx,i,total,100*(i/total))
