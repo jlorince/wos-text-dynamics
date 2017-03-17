@@ -117,26 +117,27 @@ def parse_xml(text):
                         all_text.append(child.tail.strip())
 
     #rawtext = np.array(' '.join(all_text).split())
-    if all_text:
+    joined = ' '.join(all_text).strip()
+    if joined:
         rawtext = word_tokenize(' '.join(all_text))
         return rawtext
     else:
         return None
 
 def process_docs(idx):
-    with open(ddir+'docs/indices/uids_{}.txt'.format(idx),'w') as indices,\
+    with open(ddir+'indices/idx_{}.txt'.format(idx),'w') as indices,\
       gzip.open(ddir+'docs/docs_{}.txt.gz'.format(idx),'wb') as docs:
         for d in ('matched','unmatched'):
             for line in gzip.open("{}{}/text_{}".format(ddir,d,idx)):
-                try:
-                    line = line.decode('utf8').strip().split('\t')
-                    if len(line)==2:
-                        el_id,text = line
-                        uid = ""
-                    elif len(line)==3:
-                        uid,el_id,text = line
-                except:
+                line = line.decode('utf8').strip().split('\t')
+                if (d=='unmatched') and (len(line)==2):
+                    el_id,text = line
+                    uid = ""
+                elif (d=='matched') and (len(line)==3):
+                    uid,el_id,text = line
+                else:
                     continue
+
                 docs.write((text+'\n').encode('utf8'))
                 indices.write("{},{}\n".format(uid,el_id))
 

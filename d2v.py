@@ -7,7 +7,8 @@ from nltk.tokenize import word_tokenize
 import multiprocess as mp
 
 
-text_dir = 'E:/Users/jjl2228/wos-text-dynamics-data/elsevier/author2vec/'
+base_dir = 'E:/Users/jjl2228/wos-text-dynamics-data/elsevier/author2vec/'
+text_path = base_dir+'docs/' 
 d2v_dir = text_dir+'d2v/'
 
 
@@ -29,32 +30,16 @@ class timed(object):
 # custom class to parse documents 
 class custom_TLD(TaggedLineDocument):
     def __init__(self, source):
-        """
-        `source` can be either a string (filename) or a file object.
-        Example::
-            documents = TaggedLineDocument('myfile.txt')
-        Or for compressed files::
-            documents = TaggedLineDocument('compressed_text.txt.bz2')
-            documents = TaggedLineDocument('compressed_text.txt.gz')
-        """
+
         if source.endswith('/'):
             self.files = sorted(glob.glob(source+'*'))
         else:
-            self.files = source
+            self.files = [source]
     def __iter__(self):
-        """Iterate through the lines in the source."""
-        try:
-            # Assume it is a file-like object and try treating it as such
-            # Things that don't have seek will trigger an exception
-            self.source.seek(0)
-            for item_no, line in enumerate(self.source):
-                yield TaggedDocument(utils.to_unicode(line).split('\t')[-1].lower().split(), [item_no])
-        except AttributeError:
-            # If it didn't work like a file, use it as a string filename
-            for fi in self.files:            
-                with utils.smart_open(fi) as fin:
-                    for item_no, line in enumerate(fin):
-                        yield TaggedDocument(utils.to_unicode(line).split('\t')[-1].lower().split(), [item_no])  
+        for fi in self.files:            
+            with utils.smart_open(fi) as fin:
+                for item_no, line in enumerate(fin):
+                    yield TaggedDocument(utils.to_unicode(line).split('\t')[-1].lower().split(), [item_no])  
 
 
 
@@ -108,7 +93,8 @@ if preprocess:
 
 
 
-documents = custom_TLD(d2v_dir+'docs.txt.gz')
+#documents = custom_TLD(d2v_dir+'docs.txt.gz')
+documents = custom_TLD(text_dir+'')
 with timed('Running Doc2Vec'):
     model = Doc2Vec(documents, size=size, window=window, min_count=min_count,workers=workers)
 
