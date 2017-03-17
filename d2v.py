@@ -8,8 +8,8 @@ import multiprocess as mp
 
 
 base_dir = 'E:/Users/jjl2228/wos-text-dynamics-data/elsevier/author2vec/'
-text_path = base_dir+'docs/' 
-d2v_dir = text_dir+'d2v/'
+text_dir = base_dir+'docs/' 
+d2v_dir = base_dir+'d2v/'
 
 
 
@@ -94,7 +94,7 @@ if preprocess:
 
 
 #documents = custom_TLD(d2v_dir+'docs.txt.gz')
-documents = custom_TLD(text_dir+'')
+documents = custom_TLD(text_dir)
 with timed('Running Doc2Vec'):
     model = Doc2Vec(documents, size=size, window=window, min_count=min_count,workers=workers)
 
