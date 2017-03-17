@@ -10,11 +10,13 @@ import pandas as pd
 server,user,password = [line.strip() for line in open('server_credentials.txt')]
 #ddir = "P:/Projects/WoS/wos-text-dynamics-data/elsevier/author2vec/"
 ddir = "E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/author2vec/"
+preprocess = False
 
-id_dict = {}
-for line in gzip.open('data/SD_WoS_id_match_DEDUPED.txt.gz'):
-    el,wos = line.strip().split()
-    id_dict[int(el)] = wos.decode('utf8')
+if preprocess:
+    id_dict = {}
+    for line in gzip.open('data/SD_WoS_id_match_DEDUPED.txt.gz'):
+        el,wos = line.strip().split()
+        id_dict[int(el)] = wos.decode('utf8')
 
 import time,datetime
 class timed(object):
@@ -151,7 +153,7 @@ if __name__=='__main__':
         procs = mp.cpu_count()
     pool = mp.Pool(procs)
 
-    if False:
+    if preprocess:
         with timed('Building chunks'):
             conn = pymssql.connect(server, user, password, "tempdb")
             cursor = conn.cursor()
