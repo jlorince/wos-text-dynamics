@@ -1,4 +1,5 @@
-from gensim.models.doc2vec import Doc2Vec,TaggedLineDocument
+from gensim.models.doc2vec import Doc2Vec,TaggedLineDocument,TaggedDocument
+from gensim import utils
 import gzip,os,glob,time,datetime,sys
 import numpy as np
 from tqdm import tqdm as tq
@@ -6,8 +7,8 @@ from nltk.tokenize import word_tokenize
 import multiprocess as mp
 
 
-abs_dir = 'P:/Projects/WoS/WoS/parsed/abstracts/'
-d2v_dir = 'P:/Projects/WoS/WoS/parsed/abstracts/d2v/'
+text_dir = 'E:/Users/jjl2228/wos-text-dynamics-data/elsevier/author2vec/'
+d2v_dir = text_dir+'d2v/'
 
 
 
@@ -25,6 +26,37 @@ class timed(object):
         else:
             print('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad))
 
+# custom class to parse documents 
+class custom_TLD(TaggedLineDocument):
+    def __init__(self, source):
+        """
+        `source` can be either a string (filename) or a file object.
+        Example::
+            documents = TaggedLineDocument('myfile.txt')
+        Or for compressed files::
+            documents = TaggedLineDocument('compressed_text.txt.bz2')
+            documents = TaggedLineDocument('compressed_text.txt.gz')
+        """
+        if source.endswith('/'):
+            self.files = sorted(glob.glob(source+'*'))
+        else:
+            self.files = source
+    def __iter__(self):
+        """Iterate through the lines in the source."""
+        try:
+            # Assume it is a file-like object and try treating it as such
+            # Things that don't have seek will trigger an exception
+            self.source.seek(0)
+            for item_no, line in enumerate(self.source):
+                yield TaggedDocument(utils.to_unicode(line).split('\t')[-1].lower().split(), [item_no])
+        except AttributeError:
+            # If it didn't work like a file, use it as a string filename
+            for fi in self.files:            
+                with utils.smart_open(fi) as fin:
+                    for item_no, line in enumerate(fin):
+                        yield TaggedDocument(utils.to_unicode(line).split('\t')[-1].lower().split(), [item_no])  
+
+
 
 def normalize_text(text):
     return word_tokenize(text.strip().lower().replace('|', ' '))
@@ -33,14 +65,14 @@ def normalize_text(text):
 if __name__ == '__main__':
     if len(sys.argv)>1:
         args = sys.argv[1:]
-        size,window,min_count,workers,preprocess = 
+        size,window,min_count,workers,preprocess = map(int,args)
 
     else:
         size= 100
         window = 5
         min_count = 5
-        workers = 60
-        preprocess = True
+        workers = 40
+        preprocess = False
 
 
 
@@ -76,19 +108,20 @@ if preprocess:
 
 
 
+documents = custom_TLD(d2v_dir+'docs.txt.gz')
+with timed('Running Doc2Vec'):
+    model = Doc2Vec(documents, size=size, window=window, min_count=min_count,workers=workers)
 
+with timed('Norming vectors'):
+    from sklearn.preprocessing import Normalizer
+    nrm = Normalizer('l2')
+    normed = nrm.fit_transform(model.docvecs.doctag_syn0)
+    words_normed = nrm.fit_transform(model.syn0)
 
-documents = TaggedLineDocument(d2v_dir+'docs.txt.gz')
-model = Doc2Vec(documents, size=size, window=window, min_count=min_count,workers=workers)
-
-from sklearn.preprocessing import Normalizer
-nrm = Normalizer('l2')
-normed = nrm.fit_transform(model.docvecs.doctag_syn0)
-words_normed = nrm.fit_transform(model.syn0)
-
-pathname = "{}-{}-{}".format(size,window,min_count)
-if not os.path.exists(d2v_dir+pathname):
-    os.mkdir(pathname)
-np.save('{0}{1}/doc_features_normed_{1}.npy'.format(d2v_dir,pathname),normed)
-np.save('{0}{1}/word_features_normed_{1}.npy'.format(d2v_dir,pathname),words_normed)
-model.save('{0}{1}/model_{1}.npy'.format(d2v_dir,pathname))
+with timed('Saving data'):
+    pathname = "{}-{}-{}".format(size,window,min_count)
+    if not os.path.exists(d2v_dir+pathname):
+        os.mkdir(d2v_dir+pathname)
+    np.save('{0}{1}/doc_features_normed_{1}.npy'.format(d2v_dir,pathname),normed)
+    np.save('{0}{1}/word_features_normed_{1}.npy'.format(d2v_dir,pathname),words_normed)
+    model.save('{0}{1}/model_{1}.npy'.format(d2v_dir,pathname))

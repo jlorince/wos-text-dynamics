@@ -120,6 +120,26 @@ def parse_xml(text):
         return rawtext
     else:
         return None
+
+def process_docs(idx):
+    with open(ddir+'docs/indices/uids_{}.txt'.format(idx),'w') as indices,\
+      gzip.open(ddir+'docs/docs_{}.txt.gz'.format(idx),'wb') as docs:
+        for d in ('matched','unmatched'):
+            for line in gzip.open("{}{}/text_{}".format(ddir,d,idx)):
+                try:
+                    line = line.decode('utf8').strip().split('\t')
+                    if len(line)==2:
+                        el_id,text = line
+                        uid = ""
+                    elif len(line)==3:
+                        uid,el_id,text = line
+                except:
+                    continue
+                docs.write((text+'\n').encode('utf8'))
+                indices.write("{},{}\n".format(uid,el_id).encode('utf8'))
+
+
+
     
 if __name__=='__main__':
 
@@ -131,18 +151,56 @@ if __name__=='__main__':
         procs = mp.cpu_count()
     pool = mp.Pool(procs)
 
-    with timed('Building chunks'):
-        conn = pymssql.connect(server, user, password, "tempdb")
-        cursor = conn.cursor()
-        cursor.execute("SELECT FileID from [Papers].[dbo].[Papers]")
-        all_ids = sorted([fid[0] for fid in cursor.fetchall()])
-        cursor.close()
-        conn.close()
+    if False:
+        with timed('Building chunks'):
+            conn = pymssql.connect(server, user, password, "tempdb")
+            cursor = conn.cursor()
+            cursor.execute("SELECT FileID from [Papers].[dbo].[Papers]")
+            all_ids = sorted([fid[0] for fid in cursor.fetchall()])
+            cursor.close()
+            conn.close()
 
-        chunks = np.percentile(all_ids,np.linspace(0,100,procs)).astype(int)
-        chunks[0]=-1
-        #np.array_split(np.array(sorted([k for k in id_dict.keys()])),60)
-        per_chunk_counts = pd.Series(np.digitize(all_ids,chunks,right=True)-1).value_counts().sort_index().values
+            chunks = np.percentile(all_ids,np.linspace(0,100,procs)).astype(int)
+            chunks[0]=-1
+            #np.array_split(np.array(sorted([k for k in id_dict.keys()])),60)
+            per_chunk_counts = pd.Series(np.digitize(all_ids,chunks,right=True)-1).value_counts().sort_index().values
 
-    with timed('Running main processing'):
-        pool.map(process,zip(range(procs),chunks,chunks[1:],per_chunk_counts))
+        with timed('Running main processing'):
+            pool.map(process,zip(range(procs),chunks,chunks[1:],per_chunk_counts))
+
+    with timed('Processing docs for d2v'):
+        pool.map(process_docs,range(39))
+
+    # with gzip.open(ddir+'uid_indices.txt.gz','wb') as uids,\
+    #      gzip.open(ddir+'elid_indices.txt.gz','wb') as el_ids:
+
+    #      for d in ('matched','unmatched'):
+    #         for 
+
+
+    # with gzip.open(ddir+'docs.txt.gz','wb') as docs,\
+    #      gzip.open(ddir+'uid_indices.txt.gz','wb') as uids,\
+    #      gzip.open(ddir+'elid_indices.txt.gz','wb') as el_ids:
+    #     idx=0
+    #     for fi in tq(glob.glob(ddir+'matched/*')):
+    #         for line in tq(gzip.open(fi)):
+    #             try:
+    #                 uid,el_id,text = line.decode('utf8').strip().split('\t')
+    #             except:
+    #                 continue
+    #             docs.write((text+'\n').encode('utf8'))
+    #             uids.write("{},{}\n".format(idx,uid).encode('utf8'))
+    #             el_ids.write("{},{}\n".format(idx,el_id).encode('utf8'))
+    #             idx+=1
+    #     for fi in tq(glob.glob(ddir+'unmatched/*')):
+    #         for line in tq(gzip.open(fi)):
+    #             try:
+    #                 el_id,text = line.decode('utf8').strip().split('\t')
+    #             except:
+    #                 continue
+    #             docs.write((text+'\n').encode('utf8'))
+    #             el_ids.write("{},{}\n".format(idx,el_id).encode('utf8'))
+    #             idx+=1
+
+
+
