@@ -138,7 +138,7 @@ def process_docs(idx):
                 except:
                     continue
                 docs.write((text+'\n').encode('utf8'))
-                indices.write("{},{}\n".format(uid,el_id).encode('utf8'))
+                indices.write("{},{}\n".format(uid,el_id))
 
 
 
