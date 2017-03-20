@@ -124,23 +124,34 @@ def parse_xml(text):
     else:
         return None
 
-def process_docs(idx):
-    with open(ddir+'indices/idx_{}.txt'.format(idx),'w') as indices,\
-      gzip.open(ddir+'docs/docs_{}.txt.gz'.format(idx),'wb') as docs:
-        for d in ('matched','unmatched'):
-            for line in gzip.open("{}{}/text_{}".format(ddir,d,idx)):
-                line = line.decode('utf8').strip().split('\t')
-                if (d=='unmatched') and (len(line)==2):
-                    el_id,text = line
-                    uid = ""
-                elif (d=='matched') and (len(line)==3):
-                    uid,el_id,text = line
-                else:
-                    continue
+# def process_docs(idx):
+#     with open(ddir+'indices/idx_{}.txt'.format(idx),'w') as indices,\
+#       gzip.open(ddir+'docs/docs_{}.txt.gz'.format(idx),'wb') as docs:
+#         for d in ('matched','unmatched'):
+#             for line in gzip.open("{}{}/text_{}".format(ddir,d,idx)):
+#                 line = line.decode('utf8').strip().split('\t')
+#                 if (d=='unmatched') and (len(line)==2):
+#                     el_id,text = line
+#                     uid = ""
+#                 elif (d=='matched') and (len(line)==3):
+#                     uid,el_id,text = line
+#                 else:
+#                     continue
 
-                docs.write((text+'\n').encode('utf8'))
-                indices.write("{},{}\n".format(uid,el_id))
+#                 docs.write((text+'\n').encode('utf8'))
+#                 indices.write("{},{}\n".format(uid,el_id))
 
+def process_docs_matched(idx):
+    with open(ddir+'indices_matched/idx_{}.txt'.format(idx),'w') as indices,\
+      gzip.open(ddir+'docs_matched/docs_{}.txt.gz'.format(idx),'wb') as docs:
+        for line in gzip.open("{}matched/text_{}".format(ddir,idx)):
+            line = line.decode('utf8').strip().split('\t')
+            if len(line)==3:
+                uid,el_id,text = line
+            else:
+                continue
+            docs.write((text+'\n').encode('utf8'))
+            indices.write("{},{}\n".format(uid,el_id))
 
 
     
@@ -172,7 +183,7 @@ if __name__=='__main__':
             pool.map(process,zip(range(procs),chunks,chunks[1:],per_chunk_counts))
 
     with timed('Processing docs for d2v'):
-        pool.map(process_docs,range(39))
+        pool.map(process_docs_matched,range(39))
 
     # with gzip.open(ddir+'uid_indices.txt.gz','wb') as uids,\
     #      gzip.open(ddir+'elid_indices.txt.gz','wb') as el_ids:

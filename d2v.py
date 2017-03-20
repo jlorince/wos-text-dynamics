@@ -7,7 +7,7 @@ from nltk.tokenize import word_tokenize
 import multiprocess as mp
 
 
-base_dir = 'E:/Users/jjl2228/wos-text-dynamics-data/elsevier/author2vec/'
+base_dir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/author2vec/'
 text_dir = base_dir+'docs/' 
 d2v_dir = base_dir+'d2v/'
 
@@ -36,10 +36,15 @@ class custom_TLD(TaggedLineDocument):
         else:
             self.files = [source]
     def __iter__(self):
+        item_no = -1
         for fi in self.files:            
-            with utils.smart_open(fi) as fin:
-                for item_no, line in enumerate(fin):
-                    yield TaggedDocument(utils.to_unicode(line).split('\t')[-1].lower().split(), [item_no])  
+            #with utils.smart_open(fi) as fin:
+            with gzip.open(fi) as fin:
+                for line in fin:
+                    item_no += 1
+                    #print(item_no)
+                    yield TaggedDocument(line.decode('utf8').split('\t')[-1].lower().split(), [item_no])
+
 
 
 
@@ -94,7 +99,8 @@ if preprocess:
 
 
 #documents = custom_TLD(d2v_dir+'docs.txt.gz')
-documents = custom_TLD(text_dir)
+documents = [doc for doc in tq(custom_TLD(text_dir))]
+#documents = custom_TLD(text_dir)
 with timed('Running Doc2Vec'):
     model = Doc2Vec(documents, size=size, window=window, min_count=min_count,workers=workers)
 
@@ -102,7 +108,7 @@ with timed('Norming vectors'):
     from sklearn.preprocessing import Normalizer
     nrm = Normalizer('l2')
     normed = nrm.fit_transform(model.docvecs.doctag_syn0)
-    words_normed = nrm.fit_transform(model.syn0)
+    words_normed = nrm.fit_transform(model.wv.syn0)
 
 with timed('Saving data'):
     pathname = "{}-{}-{}".format(size,window,min_count)
@@ -110,4 +116,4 @@ with timed('Saving data'):
         os.mkdir(d2v_dir+pathname)
     np.save('{0}{1}/doc_features_normed_{1}.npy'.format(d2v_dir,pathname),normed)
     np.save('{0}{1}/word_features_normed_{1}.npy'.format(d2v_dir,pathname),words_normed)
-    model.save('{0}{1}/model_{1}.npy'.format(d2v_dir,pathname))
+    model.save('{0}{1}/model_{1}'.format(d2v_dir,pathname))
