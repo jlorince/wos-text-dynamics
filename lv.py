@@ -10,6 +10,8 @@ if __name__ == '__main__':
     else:
         sample_sizes = [int(sample_size)]
 
+    print sample_sizes
+
     for s in sample_sizes:
 
         print "loading numpy file..."
@@ -23,8 +25,9 @@ if __name__ == '__main__':
                 with open(infile+'.indices_{}M'.format(s),'w') as out:
                     out.write(','.join(random_indices.astype(str)))
                 features = features[random_indices]
-            if random == 0:
+            elif random == 0:
                 features = features[:s*1000000]
+            print features.shape
 
 
         # now we write the data to file in the required LargeVis format (which requires a header with the number of items and the dimensionality of the feature vectors)
