@@ -113,8 +113,8 @@ def incat_similarity(tup):
     compset = set()
     done = 0
     while done<n:
-        if done%10000==0:
-            print("{}/{} ({})".format(done,n,os.getpid()))
+        #if done%10000==0:
+        #    print("{}/{} ({})".format(done,n,os.getpid()))
         a = np.random.choice(indices)
         b = np.random.choice(indices)
         if a!=b:
@@ -167,13 +167,18 @@ if __name__ == '__main__':
     %time acc =  pool.map(random_comps_acc,itertools.repeat(chunksize,n_procs))
     acc_df = pd.concat(acc)
     cat_results = {}
-    for cat in range(251):
+    for cat in tq(range(251)):
         possible_comps = comb(len(cat_indices[cat]),2)
         if possible_comps <= (chunksize*n_procs):
-            result = pool.map(lambda x: t.get_distance(a[0],a[1]),itertools.combinations(cat_indices[cat],2))
+            result = pool.map(lambda a: t.get_distance(a[0],a[1]),itertools.combinations(cat_indices[cat],2))
+            #cat_results[cat] = np.histogram(result,bins=np.arange(0,2,.01))[0]
+            cat_results[cat] = np.array(result)
         else:
             result = pool.map(incat_similarity,itertools.repeat((cat,chunksize),n_procs))
-        cat_results[cat] = np.histogram(list(itertools.chain(*result)),bins=np.arange(0,2,.01)[0])
+            cat_results[cat] = np.array(list(itertools.chain(*result)))
+    cat_results_binned = {}
+    for cat in range(251):
+        cat_results_binned[cat] = np.histogram(cat_results[cat],bins=np.arange(0,2,.01))[0]
 
 
     pool.terminate()

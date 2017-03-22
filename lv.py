@@ -4,7 +4,7 @@ import LargeVis,sys
 
 if __name__ == '__main__':
 
-    infile,sample_size,workers = sys.argv[1:]
+    infile,sample_size,random,workers = sys.argv[1:]
     if ',' in sample_size:
         sample_sizes = [int(s) for s in sample_size.split(',')]
     else:
@@ -17,11 +17,14 @@ if __name__ == '__main__':
         print features.shape
 
         if s > 0:
-            print "generating random sample..."
-            random_indices = np.random.choice(xrange(len(features)),s*1000000,replace=False)
-            with open(infile+'.indices_{}M'.format(s),'w') as out:
-                out.write(','.join(random_indices.astype(str)))
-            features = features[random_indices]
+            if random == 1:
+                print "generating random sample..."
+                random_indices = np.random.choice(xrange(len(features)),s*1000000,replace=False)
+                with open(infile+'.indices_{}M'.format(s),'w') as out:
+                    out.write(','.join(random_indices.astype(str)))
+                features = features[random_indices]
+            if random == 0:
+                features = features[:s*1000000]
 
 
         # now we write the data to file in the required LargeVis format (which requires a header with the number of items and the dimensionality of the feature vectors)

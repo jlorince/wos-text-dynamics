@@ -1,6 +1,6 @@
 from gensim.models.doc2vec import Doc2Vec,TaggedLineDocument,TaggedDocument
 from gensim import utils
-import gzip,os,glob,time,datetime,sys
+import gzip,os,glob,time,datetime,sys,redis
 import numpy as np
 from tqdm import tqdm as tq
 from nltk.tokenize import word_tokenize
@@ -8,8 +8,12 @@ import multiprocess as mp
 
 
 base_dir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/author2vec/'
-text_dir = base_dir+'docs/' 
+#base_dir = '/backup/home/jared/storage/wos-text-dynamics-data/author2vec/'
+text_dir = base_dir+'docs_all/' 
 d2v_dir = base_dir+'d2v/'
+
+#r = redis.StrictRedis(host='localhost', port=9999, db=0)
+
 
 
 
@@ -42,9 +46,17 @@ class custom_TLD(TaggedLineDocument):
             with gzip.open(fi) as fin:
                 for line in fin:
                     item_no += 1
-                    #print(item_no)
-                    yield TaggedDocument(line.decode('utf8').split('\t')[-1].lower().split(), [item_no])
+                    #if item_no == 100000:
+                    #     break
+                    yield TaggedDocument(line.decode('utf8').lower().split(), [item_no])
+            #break
 
+class list_TLD(TaggedLineDocument):
+    def __init__(self, source):
+        self.source = source
+    def __iter__(self):
+        for item_no,doc in enumerate(self.source):
+            yield TaggedDocument(doc.decode('utf8').lower().split(), [item_no])
 
 
 
@@ -61,7 +73,7 @@ if __name__ == '__main__':
         size= 100
         window = 5
         min_count = 5
-        workers = 40
+        workers = 24
         preprocess = False
 
 
@@ -96,13 +108,32 @@ if preprocess:
     pool.terminate()
     pool.close()
 
+    ### populate redis db
+
 
 
 #documents = custom_TLD(d2v_dir+'docs.txt.gz')
-documents = [doc for doc in tq(custom_TLD(text_dir))]
+#documents = [doc for doc in tq(custom_TLD(text_dir))]
 #documents = custom_TLD(text_dir)
+
+def loader(fi):
+    import gzip
+    with gzip.open(fi) as fin:
+        docs = [line.decode('utf8').strip().lower() for line in tq(fin)]
+    return docs
+
+docs = []
+for fi in tq(sorted(glob.glob(text_dir+'*'))):
+    #docs += gzip.open(fi).readlines()
+    docs += [line.decode('utf8').strip().lower() for line in tq(gzip.open(fi))]
+
+documents = list_TLD(docs)
+
+            
+
+
 with timed('Running Doc2Vec'):
-    model = Doc2Vec(documents, size=size, window=window, min_count=min_count,workers=workers)
+    %time model = Doc2Vec(documents, size=size, window=window, min_count=min_count,workers=workers)
 
 with timed('Norming vectors'):
     from sklearn.preprocessing import Normalizer
