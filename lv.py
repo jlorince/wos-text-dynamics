@@ -10,6 +10,8 @@ if __name__ == '__main__':
     else:
         sample_sizes = [int(sample_size)]
 
+    random = int(random)
+
     print sample_sizes
 
     for s in sample_sizes:
