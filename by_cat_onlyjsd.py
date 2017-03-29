@@ -122,11 +122,11 @@ class process(object):
         return np.array(jsds)
 
     def parse_cat(self,fi):
-        self.cat = fi[fi.rfind('\\')+1:fi.find('.')]
+        # self.cat = fi[fi.rfind('\\')+1:fi.find('.')]
+        self.cat = fi.split('/')[-1].split('.trimmed')[0]
         with timed('Processing category "{}" (window={})'.format(self.cat,self.window),logger=logger):
 
             result_path = '{}results_{}_{}'.format(self.args.output,self.window,self.cat)
-            print(result_path)
             if os.path.exists(result_path):
                 logger.info('Category "{}" already done for window={}'.format(self.cat,self.window))
                 return 0
@@ -238,7 +238,7 @@ if __name__=='__main__':
     # set conditional argument defaults
     if args.datadir is None:
         if args.data_source == 'wos':
-            args.datadir = 'data/by-cat_wos_sample/'
+            args.datadir = '../wos-text-dynamics-secondary/data/data_dropbox/by-cat_wos_try/'
         elif args.data_source == 'elsevier':
             args.datadir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/metadata/'
     # if args.min_prop>1:
@@ -265,8 +265,7 @@ if __name__=='__main__':
             d = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_elsevier/global_term_counts_formatted_*'
         elif args.data_source == 'wos':
             #d = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/termcounts_wos/global_term_counts_*'
-            d = 'data/termcounts_wos/global_term_counts_*'
-        print(d)
+            d = '../wos-text-dynamics-secondary/data/termcounts_wos/global_term_counts_*'
         for f in tq(glob.glob(d)):
             for line in open(f,encoding='utf8'):
                 term,cnt = line.strip().split(',')
@@ -277,7 +276,6 @@ if __name__=='__main__':
         with open(vocab_path,'w',encoding='utf8') as out:
             for term in vocab:
                 out.write(term+'\n')
-
     pool = mp.Pool(args.procs)
     if '_' in args.window:
         start,end = map(int,args.window.split('_'))
@@ -291,12 +289,10 @@ if __name__=='__main__':
         files = glob.glob(args.datadir+'*.trimmed.pkl')
     elif args.data_source == 'elsevier':
         files = glob.glob(args.datadir+'*.pkl')
-
     
     for w in window_range:
-        print(files)
         processor = process(vocab=vocab,window=w,args=args)
-        pool.map(processor.parse_cat,files)#,chunksize=len(files)//args.procs)
+        pool.map(processor.parse_cat,files,chunksize=len(files)//args.procs)
 
     try:
         pool.close()
