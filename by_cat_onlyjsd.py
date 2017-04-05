@@ -176,10 +176,24 @@ class process(object):
             n_years = {'elsevier':64,'wos':25}[self.args.data_source]
             start_year = {'elsevier':1950,'wos':1991}[self.args.data_source]
             for i in range(self.args.null_bootstrap_samples):
+                ## generate a sample which we split in two such that we get two non-overlapping samples
+                sample = df.groupby('year').apply(lambda x: x.sample(n=2*self.args.n_doc_samples,replace=False) if len(x)>=2*self.args.n_doc_samples else None)
+                N_entries = len(sample)
+                n_docs_tmp = (self.args.n_doc_samples)
+                n_years_tmp = int(N_entries/(2*n_docs_tmp))
+                inds_sample1=[]
+                inds_sample2=[]
+                inds_sample_tmp = np.arange(2*n_docs_tmp)
+                for i_year in range(int(n_years_tmp)):
+                    np.random.shuffle(inds_sample_tmp)
+                    inds_sample1 += list(inds_sample_tmp[:n_docs_tmp]+2*i_year*n_docs_tmp)
+                    inds_sample2 += list(inds_sample_tmp[n_docs_tmp:]+2*i_year*n_docs_tmp)
 
+                sampled1=sample.iloc[inds_sample1,:]
+                sampled2=sample.iloc[inds_sample2,:]
 
                 ## sample 1
-                sampled1 = df.groupby('year').apply(lambda x: x.sample(n=self.args.n_doc_samples,replace=False) if len(x)>=2*self.args.n_doc_samples else None)
+                # sampled1 = df.groupby('year').apply(lambda x: x.sample(n=self.args.n_doc_samples,replace=False) if len(x)>=2*self.args.n_doc_samples else None)
                 if len(sampled1)==0:
                     logger.info('No data after doc sample filtering for category "{}" (window={})'.format(self.cat,self.window))
                     return 0
@@ -190,8 +204,11 @@ class process(object):
                         word_dists1[year-start_year] = self.termcounts([text_dict[uid] for uid in grp.uid])
                     elif self.args.data_source == 'wos':
                         word_dists1[year-start_year] = self.termcounts(grp.abstract_parsed)
+
+
+
                 ## sample 2
-                sampled2 = df.groupby('year').apply(lambda x: x.sample(n=self.args.n_doc_samples,replace=False) if len(x)>=2*self.args.n_doc_samples else None)
+                # sampled2 = df.groupby('year').apply(lambda x: x.sample(n=self.args.n_doc_samples,replace=False) if len(x)>=2*self.args.n_doc_samples else None)
                 if len(sampled2)==0:
                     logger.info('No data after doc sample filtering for category "{}" (window={})'.format(self.cat,self.window))
                     return 0
@@ -224,7 +241,7 @@ class process(object):
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser("Script for calculating information theoretic measures of text evolution among WoS abstracts")
-    parser.add_argument("-p", "--procs",help="specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
+    parser.add_argument("-p", "--procs",help="specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=1,type=int) #mp.cpu_count()
     parser.add_argument("-w", "--window", help="window size, enter a single value, range (x_y), or list (x,y,z)",type=str,default='1')
     parser.add_argument("-o", "--output", help="output path for results",default=None)
     parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=10)
