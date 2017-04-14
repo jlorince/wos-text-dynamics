@@ -11,7 +11,7 @@ if __name__ == '__main__':
     dict_year = pickle.load(open('/backup/home/jared/eval_wos/dict_year.pkl.py2','rb'))
 
     sample = np.concatenate([np.random.choice(dict_year[y],n,replace=False) for y in range(1991,2016)])
-    with open(infile+'.indices_year_sample_{}'.format(n),'w') as out:
+    with open(infile+'.indices_year_sample','w') as out:
         out.write(','.join(sample.astype(str)))
 
 
@@ -49,5 +49,5 @@ if __name__ == '__main__':
     Y = LargeVis.run(outdim, threads, samples, prop, alpha, trees, neg, neigh, gamma, perp)
 
 
-    LargeVis.save(infile+".{}M.lv_coords".format(s))
+    LargeVis.save(infile+".year_sample.lv_coords".format(s))
 
