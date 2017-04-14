@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     sample = np.concatenate([np.random.choice(dict_year[y],n,replace=False) for y in range(1991,2016)])
     with open(infile+'.indices_year_sample_{}'.format(n),'w') as out:
-        out.write(','.join(random_indices.astype(str)))
+        out.write(','.join(sample.astype(str)))
 
 
     print "loading numpy file..."
