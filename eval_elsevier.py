@@ -1,6 +1,6 @@
 from __future__ import print_function
 from annoy import AnnoyIndex
-import random,time,itertools,os,pickle,redis,json
+import random,time,itertools,os,pickle,redis,json,glob
 from scipy.misc import comb
 import numpy as np
 import pandas as pd
@@ -11,7 +11,7 @@ from scipy.sparse import csr_matrix,csgraph
 from scipy.spatial.distance import cosine
 
 
-indexbuilt = True
+indexbuilt = False
 n_procs = 24
 chunksize = 100000
 
@@ -23,27 +23,6 @@ def convert_distance(d):
 def convert_distance_reverse(d):
     return np.sqrt(2*d)
 
-def random_comps(n):
-    pid = os.getpid()
-    np.random.seed(int(time.time()/1000)+pid)
-    ds = []
-    comps = []
-    compset = set()
-    done = 0
-    while done<n:
-        if done%10000==0:
-            print("{}/{} ({})".format(done,n,os.getpid()))
-        a = np.random.randint(0,total_docs)
-        b = np.random.randint(0,total_docs)
-        if a!=b:
-            if a>b:
-                a,b = b,a
-            if (a,b) not in compset:
-                ds.append(convert_distance(t.get_distance(a,b)))
-                compset.add((a,b))
-                comps.append((a,b))
-                done += 1
-    return ds,comps
 
 def random_comps_acc(n):
     pid = os.getpid()
@@ -89,19 +68,26 @@ def random_comps_acc(n):
 def nn(seed,n=100):
     neighbors = t.get_nns_by_item(seed,100,include_distances=True)
 
-def setup_cats():
-    cat_dict = pickle.load(open('cat_dict.pkl','rb'))
+def setup_cats(idx_dict):
+    cat_dict = pickle.load(open('cat_dict_complete.pkl','rb'))
     cat_indices = {i:[] for i in range(251)}
-    for k,v in tq(cat_dict.items()):
-        #r.set(k,json.dumps(v))
+    n_bad = 0 
+    for uid,i in tq(idx_dict.items()):
+        try:
+            v = cat_dict[uid]
+        except KeyError:
+            n_bad += 1
+            continue
+        r.set(i,json.dumps(v))
         cats = v[2]
         for c in cats:
             try:
-                cat_indices[c].append(k)
+                cat_indices[c].append(i)
             except KeyError:
                 continue
     for c in tq(cat_indices):
         cat_indices[c] = np.array(cat_indices[c])
+
     return cat_indices
 
 def incat_similarity(tup):
@@ -132,8 +118,21 @@ def incat_similarity(tup):
 if __name__ == '__main__':
 
     # BUILD ANNOY INDEX
-
-    features = np.load('model_100-5-5.npy.docvecs.doctag_syn0.npy')
+    idx_dict = {}
+    indices = []
+    i=0
+    idx=0
+    for fi in tq(sorted(glob.glob('indices_all/idx_*'))):
+        for line in open(fi):
+            uid,el_id = line.strip().split(',')
+            if uid != '':
+                 idx_dict[uid] = idx
+                 indices.append(i)
+                 idx+=1
+            i+=1
+    #features = np.load('model_100-5-5.docvecs.doctag_syn0.npy')
+    features = np.load('model_100-10-100.docvecs.doctag_syn0.npy')
+    features = features[np.array(indices)]
     total_docs,f = features.shape
 
 
@@ -155,16 +154,20 @@ if __name__ == '__main__':
 
         t.build(10) # 10 trees
         t.save('test.ann')
+
+        cat_indices = setup_cats(idx_dict)
+        pickle.dump(cat_indices,open('cat_indices.pkl','wb'))
     else:
         t = AnnoyIndex(f)
         t.load('test.ann')
+        cat_indices = pickle.load(open('cat_indices.pkl','rb'))
 
     del features
 
-    cat_indices = setup_cats()
+    
 
     pool = mp.Pool(24)
-    %time acc =  pool.map(random_comps_acc,itertools.repeat(chunksize,n_procs))
+    %time acc =  pool.map(random_comps_acc,itertools.repeat(1000000,n_procs))
     acc_df = pd.concat(acc)
     cat_results = {}
     for cat in tq(range(251)):
@@ -182,4 +185,8 @@ if __name__ == '__main__':
 
 
     pool.terminate()
+
+    pickle.dump({c:pd.Series(cat_results[c]).describe() for c in cat_results},open('cat_results.pkl','wb'))
+    pickle.dump(cat_results_binned,open('cat_results_binned.pkl','wb'))
+    acc_df.to_pickle('acc_df.pkl')
 
