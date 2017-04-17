@@ -49,5 +49,5 @@ if __name__ == '__main__':
     Y = LargeVis.run(outdim, threads, samples, prop, alpha, trees, neg, neigh, gamma, perp)
 
 
-    LargeVis.save(infile+".year_sample.lv_coords".format(s))
+    LargeVis.save(infile+".year_sample.lv_coords")
 
