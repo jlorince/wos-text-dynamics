@@ -2,7 +2,7 @@ import numpy as np
 from tqdm import tqdm as tq
 import LargeVis,sys,pickle
 
-n = 300000
+n = 200000
 
 if __name__ == '__main__':
 

@@ -11,7 +11,7 @@ from scipy.sparse import csr_matrix,csgraph
 from scipy.spatial.distance import cosine
 
 
-indexbuilt = True
+indexbuilt = False
 n_procs = 24
 chunksize = 100000
 
@@ -165,7 +165,8 @@ if __name__ == '__main__':
 
     # BUILD ANNOY INDEX
 
-    features = np.load('model_100-5-5.npy.docvecs.doctag_syn0.npy')
+    #features = np.load('model_100-5-5.npy.docvecs.doctag_syn0.npy')
+    features = np.load('/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/200-10-50/model_200-10-50.docvecs.doctag_syn0.npy')
     total_docs,f = features.shape
 
 
@@ -193,27 +194,36 @@ if __name__ == '__main__':
 
     del features
 
-    cat_indices,cat_year_indices = setup_cats()
+    #cat_indices,cat_year_indices = setup_cats()
+    cat_indices = pickle.load(open('cat_indices.pkl'))
+    cat_year_indices = pickle.load(open('cat_year_indices.pkl'))
 
-    # pool = mp.Pool(24)
-    # %time acc =  pool.map(random_comps_acc,itertools.repeat(chunksize,n_procs))
-    # acc_df = pd.concat(acc)
-    # cat_results = {}
-    # for cat in tq(range(251)):
-    #     possible_comps = comb(len(cat_indices[cat]),2)
-    #     if possible_comps <= (chunksize*n_procs):
-    #         result = pool.map(lambda a: t.get_distance(a[0],a[1]),itertools.combinations(cat_indices[cat],2))
-    #         #cat_results[cat] = np.histogram(result,bins=np.arange(0,2,.01))[0]
-    #         cat_results[cat] = np.array(result)
-    #     else:
-    #         result = pool.map(incat_similarity,itertools.repeat((cat,chunksize),n_procs))
-    #         cat_results[cat] = np.array(list(itertools.chain(*result)))
-    # cat_results_binned = {}
-    # for cat in range(251):
-    #     cat_results_binned[cat] = np.histogram(cat_results[cat],bins=np.arange(0,2,.01))[0]
+    pool = mp.Pool(24)
+    %time acc =  pool.map(random_comps_acc,itertools.repeat(chunksize,n_procs))
+    acc_df = pd.concat(acc)
+    pickle.dump(acc_df,open('acc_df.pkl','wb'))
+    cat_results = {}
+    for cat in tq(range(251)):
+        possible_comps = comb(len(cat_indices[cat]),2)
+        if possible_comps <= (chunksize*n_procs):
+            result = pool.map(lambda a: t.get_distance(a[0],a[1]),itertools.combinations(cat_indices[cat],2))
+            #cat_results[cat] = np.histogram(result,bins=np.arange(0,2,.01))[0]
+            cat_results[cat] = np.array(result)
+        else:
+            result = pool.map(incat_similarity,itertools.repeat((cat,chunksize),n_procs))
+            cat_results[cat] = np.array(list(itertools.chain(*result)))
+    pickle.dump(cat_results,open('cat_results.pkl','wb'))
 
-    # pool.terminate()
+    cat_results_binned = {}
+    for cat in range(251):
+        cat_results_binned[cat] = np.histogram(cat_results[cat],bins=np.arange(0,2,.01))[0]
 
+    pickle.dump(cat_results_binned,open('cat_results_binned.pkl','wb'))
+
+
+    pool.terminate()
+
+"""
 
     ## THIS SHOULD MOVE TO NEW SCRIPT BUT STAYS HERE FOR NOW
     #chunksize = 10000
@@ -253,3 +263,4 @@ if __name__ == '__main__':
             cat_results_year_summary[cat][year] = (cat_results_year[cat][year].mean(),cat_results_year[cat][year].std(),len(cat_results_year[cat][year]))
     pickle.dump(cat_results_year_summary,open('cat_results_year_summary.pkl','wb'))
 
+"""
