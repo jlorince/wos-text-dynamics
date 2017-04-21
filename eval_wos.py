@@ -166,7 +166,8 @@ if __name__ == '__main__':
     # BUILD ANNOY INDEX
 
     #features = np.load('model_100-5-5.npy.docvecs.doctag_syn0.npy')
-    features = np.load('/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/200-10-50/model_200-10-50.docvecs.doctag_syn0.npy')
+    param = '50-5-5'
+    features = np.load('/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/{0}/model_{0}.docvecs.doctag_syn0.npy'.format(param))
     total_docs,f = features.shape
 
 
@@ -195,8 +196,8 @@ if __name__ == '__main__':
     del features
 
     #cat_indices,cat_year_indices = setup_cats()
-    cat_indices = pickle.load(open('cat_indices.pkl'))
-    cat_year_indices = pickle.load(open('cat_year_indices.pkl'))
+    cat_indices = pickle.load(open('cat_indices.pkl','rb'))
+    cat_year_indices = pickle.load(open('cat_year_indices.pkl','rb'))
 
     pool = mp.Pool(24)
     %time acc =  pool.map(random_comps_acc,itertools.repeat(chunksize,n_procs))

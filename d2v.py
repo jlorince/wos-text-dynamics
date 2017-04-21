@@ -8,9 +8,9 @@ import multiprocess as mp
 
 
 #base_dir = 'E:/Users/jjl2228/WoS/wos-text-dynamics-data/elsevier/author2vec/'
-#base_dir = 'P:/Projects/WoS/wos-text-dynamics-data/elsevier/author2vec/'
+base_dir = 'P:/Projects/WoS/wos-text-dynamics-data/'
 #base_dir = '/backup/home/jared/storage/wos-text-dynamics-data/author2vec/'
-base_dir = '/backup/home/jared/storage/wos-text-dynamics-data/'
+#base_dir = '/backup/home/jared/storage/wos-text-dynamics-data/'
 text_dir = base_dir+'docs_all/' 
 d2v_dir = base_dir+'d2v-wos/'
 
@@ -73,10 +73,11 @@ if __name__ == '__main__':
 
     else:
         size= 200
-        window = 10
-        min_count = 50
+        window = 5
+        min_count = 5
         workers = 24
         preprocess = False
+        sample=0
 
 
 
@@ -131,7 +132,7 @@ documents = TaggedLineDocument(d2v_dir+'docs.txt.gz')
 
 
 with timed('Running Doc2Vec'):
-    %time model = Doc2Vec(documents, dm=1, sample=1e-5, size=size, window=window, min_count=min_count,workers=workers)
+    model = Doc2Vec(documents, dm=1, sample=sample, size=size, window=window, min_count=min_count,workers=workers)
 
 with timed('Norming vectors'):
     from sklearn.preprocessing import Normalizer
@@ -140,7 +141,7 @@ with timed('Norming vectors'):
     words_normed = nrm.fit_transform(model.wv.syn0)
 
 with timed('Saving data'):
-    pathname = "{}-{}-{}".format(size,window,min_count)
+    pathname = "{}-{}-{}-{}".format(size,window,min_count,sample)
     if not os.path.exists(d2v_dir+pathname):
         os.mkdir(d2v_dir+pathname)
     np.save('{0}{1}/doc_features_normed_{1}.npy'.format(d2v_dir,pathname),normed)
