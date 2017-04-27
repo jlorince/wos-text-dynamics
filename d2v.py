@@ -14,8 +14,6 @@ base_dir = 'P:/Projects/WoS/wos-text-dynamics-data/'
 text_dir = base_dir+'docs_all/' 
 d2v_dir = base_dir+'d2v-wos/'
 
-#r = redis.StrictRedis(host='localhost', port=9999, db=0)
-
 
 
 
@@ -34,24 +32,27 @@ class timed(object):
             print('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad))
 
 # custom class to parse documents 
-class custom_TLD(TaggedLineDocument):
-    def __init__(self, source):
+# class custom_TLD(TaggedLineDocument):
+#     def __init__(self, source):
 
-        if source.endswith('/'):
-            self.files = sorted(glob.glob(source+'*'))
-        else:
-            self.files = [source]
-    def __iter__(self):
-        item_no = -1
-        for fi in self.files:            
-            #with utils.smart_open(fi) as fin:
-            with gzip.open(fi) as fin:
-                for line in fin:
-                    item_no += 1
-                    #if item_no == 100000:
-                    #     break
-                    yield TaggedDocument(line.decode('utf8').lower().split(), [item_no])
-            #break
+#         if source.endswith('/'):
+#             self.files = sorted(glob.glob(source+'*'))
+#         else:
+#             self.files = [source]
+#     def __iter__(self):
+#         item_no = -1
+#         for fi in self.files:            
+#             #with utils.smart_open(fi) as fin:
+#             with gzip.open(fi) as fin:
+#                 for line in fin:
+#                     item_no += 1
+#                     #if item_no == 100000:
+#                     #     break
+#                     yield TaggedDocument(line.decode('utf8').lower().split(), [item_no])
+#             #break
+
+
+
 
 class list_TLD(TaggedLineDocument):
     def __init__(self, source):
@@ -114,6 +115,23 @@ if preprocess:
     ### populate redis db
 
 
+#### Generate Randomized year-matched samples
+seed = np.random.randint(999999)
+print('----RANDOM SEED = {}----'.format(seed))
+np.random.seed(seed)
+
+years,counts = np.unique(index_years,return_counts=True)
+indices_to_write = []
+for year in tq(years):
+    indices_to_write.append(np.random.choice(np.where(index_years==year)[0],counts.min(),replace=False))
+indices_to_write = np.concatenate(indices_to_write)
+np.save(d2v_dir+'docs_indices_sampled_{}.npy'.format(seed),indices_to_write)
+with gzip.open(d2v_dir+'docs.txt.gz') as fin, gzip.open(d2v_dir+'docs_sampled_{}.txt.gz'.format(seed)) as fout:
+    for i,line in enumerate(fin):
+        if i in indices_to_write:
+            fout.write(line)
+
+
 
 #documents = custom_TLD(d2v_dir+'docs.txt.gz')
 #%time documents = [doc for doc in tq(custom_TLD(text_dir))]
@@ -127,6 +145,10 @@ documents = TaggedLineDocument(d2v_dir+'docs.txt.gz')
 #     docs += [line.decode('utf8').strip().lower() for line in tq(gzip.open(fi))]
 
 # documents = list_TLD(docs)
+
+
+
+
 
             
 
