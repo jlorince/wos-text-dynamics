@@ -10,6 +10,12 @@ help_string="""
 
 THIS CODE IS ONLY TESTED AGAINST PYTHON 3.6!!!
 
+lde.py --> Local Density Estimation script
+
+Generates estiamtes of local density in sematic space by computing the mean distance between documents and their nearest neighbors, leveraging the annoy approximate nearest neighbors library.
+
+For each document, computes the mean distance to its top k nearest neighbors each year, as well as the temporal distribution of those top k neighbors.
+
 We can generate (or load) three types of annoy knn indexes:
 - global: Put all documents into a single global index
 - global-norm: Still puts all documents in a single index, but randomly downsamples he number of documents from each year so that all years are equally represented.
@@ -34,7 +40,7 @@ def convert_distance(d):
    return (d**2) /2
 vec_convert_distance = np.vectorize(convert_distance)
 
-
+# computes LDE w.r.t. a reference year when index type is `per_year`
 def mean_neighbor_dist_peryear(i,reference_year=None):
 
     year = index_years[i]
@@ -48,17 +54,13 @@ def mean_neighbor_dist_peryear(i,reference_year=None):
         neighbors,distances = indexes[reference_year].get_nns_by_vector(vec, n, search_k=search_k, include_distances=True)
         return convert_distance(np.mean(distances))
 
+# computes LDE when index type is `global` or `global_norm`
 def mean_neighbor_dist_global(i,reference_year=None):
-    
     neighbors,distances = t.get_nns_by_item(idx, args.knn+1, search_k=args.search_k, include_distances=True)
     return convert_distance(np.mean(distances[1:]))
 
-
-def neighbor_year_counts(i):
-    neighbors = t.get_nns_by_item(i, args.knn+1, search_k=args.search_k, include_distances=False)
-    neighbor_years = Counter([index_years[n] for n in neighbors[1:]])
-    return [neighbor_years.get(y,0) for y in year_range]
-
+# computes LDE w.r.t to each year, as well as the neighbor distribution across years
+# ONLY VALID when index type is `global` or `global_norm`
 def lde (i):
     neighbors,distances = t.get_nns_by_item(i, args.knn+1, search_k=args.search_k, include_distances=True)
     neighbors = np.array(neighbors[1:])
@@ -73,12 +75,6 @@ def lde (i):
     return d_result,n_result
 
 
-def local_dens_over_time(i):
-    result = []
-    for year in year_range:
-        result.append(mean_neighbor_dist(i,n=knn,search_k=search_k,reference_year=year))
-    return result
-
 def wrapper(year):
     current = np.where(index_years==year)[0]
     total = len(current)
@@ -90,23 +86,12 @@ def wrapper(year):
             d,n = lde(doc)
             out.write("{}\t{}\t{}\n".format(indices[doc],','.join(map(str,d)),','.join(map(str,n))))
 
-# def wrapper(year):
-#     current = np.where(index_years==year)[0]
-#     total = len(current)
-#     with open('results_{}_{}'.format(year,knn),'w') as out:
-#         for i,doc in enumerate(current):
-#             if i%100==0:
-#                 print("{}: {}/{} ({:.2f}%)".format(year,i,total,100*(i/total)))
-#                 out.flush()
-#             d = local_dens_over_time(doc)
-#             out.write("{}\t{}\n".format(doc,','.join(map(str,d))))
- 
 
 if __name__ == '__main__':
     # chunksize=1000
 
     parser = argparse.ArgumentParser(help_string)
-    parser.add_argument("--params", required=False,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0' (see gensim doc2vec documentation for details of these parameters)",type=str,default='100-5-5')
+    parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--index_type", help="Type of knn index to load/generate.",default='global-norm',choices=['global','global-norm','per_year'])
     parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to directory from which this script is run",default='./')
     parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only  useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. IMPORTANT NOTE: if this arg is unspecified and running in `global-norm`, the first global-norm index found in `index_dir` will be loaded (if none exists, a new one is generated).",default=None)
@@ -148,7 +133,6 @@ if __name__ == '__main__':
     f = int(args.params.split('-')[0])
 
     # LOAD OR GENERATE KNN INDEX, AS APPROPRIATE
-    
     if args.index_type=='global':
 
         t = AnnoyIndex(f,metric='angular')
@@ -157,7 +141,10 @@ if __name__ == '__main__':
             t.load(args.index_dir+'index.ann')
         
         else:
-            features = np.load('{0}{1}/model_{1}.docvecs.doctag_syn0.npy'.format(args.d2vdir,args.params))
+            if args.params.split('-')[-1] == 'None':
+                features = np.load('{0}{1}/model_{1}.docvecs.doctag_syn0.npy'.format(args.d2vdir,args.params))
+            else:
+                features = np.load('{0}{1}/doc_features_expanded_{1}.npy'.format(args.d2vdir,args.params))
             for i,vec in tq(enumerate(features)):
                 t.add_item(i, vec)
             t.build(args.trees) 
@@ -169,7 +156,10 @@ if __name__ == '__main__':
         
         # we just check if the first year of the date range exists. If not, build all indexes
         if not os.path.exists(args.index_dir+'index_{}_{}.ann'.format(year_range[0],trees)):
-            features = np.load('{0}{1}/model_{1}.docvecs.doctag_syn0.npy'.format(args.d2vdir,args.params))
+            if args.params.split('-')[-1] == 'None':
+                features = np.load('{0}{1}/model_{1}.docvecs.doctag_syn0.npy'.format(args.d2vdir,args.params))
+            else:
+                features = np.load('{0}{1}/doc_features_expanded_{1}.npy'.format(args.d2vdir,args.params))
             for year in tq(year_range):
                 current = features[np.where(index_years==year)[0]]
                 t = AnnoyIndex(f,metric='angular')  

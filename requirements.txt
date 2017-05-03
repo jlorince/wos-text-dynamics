@@ -1,0 +1,9 @@
+annoy 
+redis
+scipy
+numpy
+pandas
+multiprocess
+tqdm
+gensim
+nltk
