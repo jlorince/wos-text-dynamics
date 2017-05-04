@@ -16,10 +16,19 @@ Generates estiamtes of local density in sematic space by computing the mean dist
 
 For each document, computes the mean distance to its top k nearest neighbors each year, as well as the temporal distribution of those top k neighbors.
 
+Results are saved in a direcotry specifed by the following:
+result_path = args.result_dir+'_'.join([str(v) for v in [args.params,args.index_type,args.index_seed,args.knn,args.trees,args.search_k,args.docs_per_year]])+'/'
+
+Example:
+100-5-5-None_global-norm_12345_1000_100_100000_None/
+
 We can generate (or load) three types of annoy knn indexes:
 - global: Put all documents into a single global index
 - global-norm: Still puts all documents in a single index, but randomly downsamples he number of documents from each year so that all years are equally represented.
+    - THIS IS THE ONLY METHOD FULLY IMPLEMENTED RIGHT NOW
 - per_year: Generates an independent index for each year, stored in a separate file.
+
+Use the index_seed argument to load an existing global_norm specified by the provided values of `trees` and `index_seed`. Otherwise this will always generate a new index.
 
 
 Annoy documentation: https://github.com/spotify/annoy
@@ -55,8 +64,8 @@ def convert_distance(d):
    return (d**2) /2
 vec_convert_distance = np.vectorize(convert_distance)
 
-
-
+####### UNUSED
+#############################################################
 # computes LDE w.r.t. a reference year when index type is `per_year`
 # NOT USABLE AS IS (needs new wrapper function, etc.) but leaving function in for reference
 def mean_neighbor_dist_peryear(i,reference_year=None):
@@ -77,7 +86,7 @@ def mean_neighbor_dist_peryear(i,reference_year=None):
 def mean_neighbor_dist_global(i,reference_year=None):
     neighbors,distances = t.get_nns_by_item(idx, args.knn+1, search_k=args.search_k, include_distances=True)
     return convert_distance(np.mean(distances[1:]))
-
+#############################################################
 
 
 # computes LDE w.r.t to each year, as well as the neighbor distribution across years
@@ -131,12 +140,11 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(help_string)
     # DEBUG LINE:
-    parser.add_argument("--params", default='100-5-5',help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
-    #parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
+    #parser.add_argument("--params", default='100-5-5',help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
+    parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--index_type", help="Type of knn index to load/generate.",default='global-norm',choices=['global','global-norm','per_year'])
     parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to directory from which this script is run",default='./')
-    parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only  useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. IMPORTANT NOTE: if this arg is unspecified and running in `global-norm`, the first global-norm index found in `index_dir` will be loaded (if none exists, a new one is generated).",default=None)
-    # parser.add_argument("-b", "--null_bootstrap_samples", help="Number of monte carlo samples for bootstrap null model calculations",type=int,default=100)
+    parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. If unspecified a new model will be generated.",default=None)
     parser.add_argument("--d2vdir",help="path to doc2vec model directory",default='/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/',type=str)
     parser.add_argument("--procs",help="Specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
     parser.add_argument("--knn",help="number of nearest neighbors to be used in density computations",default=1000,type=int)
@@ -156,6 +164,9 @@ if __name__ == '__main__':
         mean_neighbor_dist = mean_neighbor_dist_peryear
     else:
         mean_neighbor_dist = mean_neighbor_dist_global
+
+    if (args.index_type=='global_norm') and (args.index_seed is None):
+        args.index_seed = np.random.randint(999999)
 
     result_path = args.result_dir+'_'.join([str(v) for v in [args.params,args.index_type,args.index_seed,args.knn,args.trees,args.search_k,args.docs_per_year]])+'/'
     if os.path.exists(result_path):
@@ -232,15 +243,20 @@ if __name__ == '__main__':
             features = np.load('{0}{1}/doc_features_expanded_{1}.npy'.format(args.d2vdir,args.params),mmap_mode='r')
 
         t = AnnoyIndex(f,metric='angular')
-        existing = glob.glob('{}index_norm_{}_*.ann'.format(args.index_dir,args.trees))
+
+        if args.index_seed is not None:
+            try:
+                t.load('{}index_norm_{}_{}.ann'.format(args.index_dir,arg.trees,args.index_seed))
+                indices = np.load('{}index_norm_{}_{}.ann.indices.npy'.format(args.index_dir,arg.trees,args.index_seed))
+            except FileNotFoundError:
+                raise Exception('You have specified an invalid seed (file does not exist)')
         
-        if len(existing)==0:
+        else:
             
             indices = []
             idx = 0
-            seed = np.random.randint(999999)
-            print('----RANDOM SEED = {}----'.format(seed))
-            np.random.seed(seed)
+            print('----RANDOM SEED = {}----'.format(args.index_seed))
+            np.random.seed(args.index_seed)
 
             if args.docs_per_year is None:
                 unique_years,unique_year_counts = np.unique(index_years,return_counts=True)
@@ -254,38 +270,17 @@ if __name__ == '__main__':
                     idx+=1
 
             indices = np.concatenate(indices)
-            np.save('{}index_norm_{}_{}.ann.indices'.format(args.index_dir,arg.trees,seed),indices)
+            np.save('{}index_norm_{}_{}.ann.indices'.format(args.index_dir,arg.trees,args.index_seed),indices)
 
             with timed('building index'):
                 t.build(args.trees) 
             with timed('saving index'):
-                t.save('{}index_norm_{}_{}.ann'.format(args.index_dir,arg.trees,seed))
+                t.save('{}index_norm_{}_{}.ann'.format(args.index_dir,arg.trees,args.index_seed))
 
-        else:
-            if args.index_seed is not None:
-                try:
-                    t.load('{}index_norm_{}_{}.ann'.format(args.index_dir,arg.trees,args.index_seed))
-                    indices = np.load('{}index_norm_{}_{}.ann.indices.npy'.format(args.index_dir,arg.trees,args.index_seed))
-                except FileNotFoundError:
-                    raise Exception('You have specified an invalid seed (file does not exist)')
-            else:
-                t.load(existing[0])
-                indices = np.load(existing[0]+'.indices.npy')
-
-        #dict_indices = {raw_idx:i for i,raw_idx in enumerate(indices)}
         index_years_sampled = index_years[indices]
         untrained = np.delete(np.ogrid[:len(features)],indices)
 
 
-
     pool = mp.Pool(args.procs)
-    pool.map(wrapper,year_range)
+    pool.map(lde_wrapper,year_range)
     pool.terminate()
-
-
-   
-
-
-
-
-    
