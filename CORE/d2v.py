@@ -75,7 +75,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
-    if preprocess:
+    if args.preprocess:
 
         pool = mp.Pool(min(25,mp.cpu_count()))
 
