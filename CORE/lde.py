@@ -144,7 +144,7 @@ if __name__ == '__main__':
     #parser.add_argument("--params", default='100-5-5',help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--index_type", help="Type of knn index to load/generate. Default is global-norm (other options not fully implemented)",default='global-norm',choices=['global','global-norm','per_year'])
-    parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to same directory as d2vdir",default=None)
+    parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to same directory as d2v model files",default=None)
     parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. If unspecified a new model will be generated.",default=None)
     parser.add_argument("--d2vdir",help="path to doc2vec model directory",default='/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/',type=str)
     parser.add_argument("--procs",help="Specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
@@ -152,7 +152,7 @@ if __name__ == '__main__':
     parser.add_argument("--trees",help="number of projection trees for knn index, default=100 (see annoy documentation)",default=100,type=int)
     parser.add_argument("--search_k",help="search_k paramter for knn index, default = `trees`*`knn` (see annoy documentation)",default=None,type=int)
     parser.add_argument("--docs_per_year",help="number of papers to sample from each year when building `global-norm` annoy index. Deafults to number in year with least documents.",default=None,type=int)
-    parser.add_argument("--result_dir",help="Output directory for results. A subfolder in this directory (named with relevant params) will be created here. Defaults to d2vdir.",default=None,type=str)
+    parser.add_argument("--result_dir",help="Output directory for results. A subfolder in this directory (named with relevant params) will be created here. By default folder is generated inside d2vdir.",default=None,type=str)
     args = parser.parse_args()
 
     ### ARGUMENT SETUP
@@ -165,9 +165,9 @@ if __name__ == '__main__':
     else:
         mean_neighbor_dist = mean_neighbor_dist_global
     if args.index_dir is None:
-        args.index_dir = args.d2vdir
+        args.index_dir = args.d2vdir+args.params+'/'
     if args.result_dir is None:
-        args.result_dir = args.d2vdir
+        args.result_dir = args.d2vdir+args.params+'/'
 
     result_path = args.result_dir+'_'.join([str(v) for v in [args.params,args.index_type,args.index_seed,args.knn,args.trees,args.search_k,args.docs_per_year]])+'/'
     if os.path.exists(result_path):
