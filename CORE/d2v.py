@@ -151,15 +151,21 @@ if args.year_sample:
         expanded_docvecs = np.empty((documents.n_docs,args.size))
         expanded_docvecs[indices_to_write] = model.docvecs.doctag_syn0
     
+        #--------------------
+        # if parallel version is too memory intensive or otherwise problematic,
+        # uncomment the next 2 lines to just do inference serially
+        #--------------------
         #for i,doc in tq(documents.iter_skipped(),total=documents.n_docs-len(indices_to_write)):
         #    expanded_docvecs[i] = model.infer_vector(doc)
+
+        # parallelized inference of unseen documents
         def wrapper(tup):
             i,doc = tup
             return i,model.infer_vector(doc)
-
         pool = mp.pool(args.workers)
         for i,docvec in tq(pool.imap_unordered(wrapper,documents.iter_skipped()),total=documents.n_docs-len(indices_to_write),chunksize=1000):
             expanded_docvecs[i] = docvec
+        pool.terminate()
 
 
 with timed('Norming vectors'):
