@@ -148,10 +148,18 @@ with timed('Running Doc2Vec'):
 
 if args.year_sample:
     with timed('Inferring vectors for unseen documents'):
-        expanded_docvecs = np.empty(documents.n_docs,args.size)
+        expanded_docvecs = np.empty((documents.n_docs,args.size))
         expanded_docvecs[indices_to_write] = model.docvecs.doctag_syn0
-        for i,doc in tq(documents.iter_skipped(),total=documents.n_docs-len(indices_to_write)):
-            expanded_docvecs[i] = model.infer_vector(doc)
+    
+        #for i,doc in tq(documents.iter_skipped(),total=documents.n_docs-len(indices_to_write)):
+        #    expanded_docvecs[i] = model.infer_vector(doc)
+        def wrapper(tup):
+            i,doc = tup
+            return i,model.infer_vector(doc)
+
+        pool = mp.pool(args.workers)
+        for i,docvec in tq(pool.imap_unordered(wrapper,documents.iter_skipped()),total=documents.n_docs-len(indices_to_write),chunksize=1000):
+            expanded_docvecs[i] = docvec
 
 
 with timed('Norming vectors'):
