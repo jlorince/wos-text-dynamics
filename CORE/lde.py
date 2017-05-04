@@ -164,8 +164,6 @@ if __name__ == '__main__':
         mean_neighbor_dist = mean_neighbor_dist_peryear
     else:
         mean_neighbor_dist = mean_neighbor_dist_global
-    if (args.index_type=='global-norm') and (args.index_seed is None):
-        args.index_seed = np.random.randint(999999)
     if args.index_dir is None:
         args.index_dir = args.d2vdir
     if args.result_dir is None:
@@ -258,6 +256,7 @@ if __name__ == '__main__':
             
             indices = []
             idx = 0
+            args.index_seed = np.random.randint(999999)
             print('----RANDOM SEED = {}----'.format(args.index_seed))
             np.random.seed(args.index_seed)
 
