@@ -82,9 +82,15 @@ if __name__ == '__main__':
     LargeVis.loadfile(args.temp+"lv_format.txt")
 
     Y = LargeVis.run(2, args.threads, args.samples, args.prop, args.alpha, args.trees, args.neg, args.neigh, args.gamma, args.perp)
-    if args.sample_size%1000000==0:
-        filename = '.{}M.lv_corrds'.format(int(args.sample_size/1000000))
+    if arg.sampling == 'by_year':
+        if args.sample_size is not None and args.sample_size%1000000==0:
+            filename = '.{}M.year_lv_coords'.format(int(args.sample_size/1000000))
+        else:
+            filename = '.{}.year.lv_coords'.format(args.sample_size)
     else:
-        filename = '.{}.lv_coords'.format(args.sample_size)
+        if args.sample_size is not None and args.sample_size%1000000==0:
+            filename = '.{}M.lv_coords'.format(int(args.sample_size/1000000))
+        else:
+            filename = '.{}.lv_coords'.format(args.sample_size)
     LargeVis.save(args.infile+filename)
 
