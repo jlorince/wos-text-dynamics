@@ -249,8 +249,8 @@ if __name__ == '__main__':
 
         if args.index_seed is not None:
             try:
-                t.load('{}index_norm_{}_{}.ann'.format(args.index_dir,arg.trees,args.index_seed))
-                indices = np.load('{}index_norm_{}_{}.ann.indices.npy'.format(args.index_dir,arg.trees,args.index_seed))
+                t.load('{}index_norm_{}_{}.ann'.format(args.index_dir,args.trees,args.index_seed))
+                indices = np.load('{}index_norm_{}_{}.ann.indices.npy'.format(args.index_dir,args.trees,args.index_seed))
             except FileNotFoundError:
                 raise Exception('You have specified an invalid seed (file does not exist)')
         
@@ -273,12 +273,12 @@ if __name__ == '__main__':
                     idx+=1
 
             indices = np.concatenate(indices)
-            np.save('{}index_norm_{}_{}.ann.indices'.format(args.index_dir,arg.trees,args.index_seed),indices)
+            np.save('{}index_norm_{}_{}.ann.indices'.format(args.index_dir,args.trees,args.index_seed),indices)
 
             with timed('building index'):
                 t.build(args.trees) 
             with timed('saving index'):
-                t.save('{}index_norm_{}_{}.ann'.format(args.index_dir,arg.trees,args.index_seed))
+                t.save('{}index_norm_{}_{}.ann'.format(args.index_dir,args.trees,args.index_seed))
 
         index_years_sampled = index_years[indices]
         untrained = np.delete(np.ogrid[:len(features)],indices)
