@@ -1,5 +1,5 @@
 from annoy import AnnoyIndex
-import random,time,itertools,os,pickle,glob,argparse
+import random,time,itertools,os,pickle,glob,argparse,datetime,warnings
 import numpy as np
 import pandas as pd
 import multiprocess as mp
@@ -33,6 +33,21 @@ year_range = range(1991,2016)
 nyears = len(year_range)
 year_dict = {y:i for i,y in enumerate(year_range)}
 
+
+class timed(object):
+    def __init__(self,desc='command',pad='',**kwargs):
+        self.desc = desc
+        self.kwargs = kwargs
+        self.pad = pad
+    def __enter__(self):
+        self.start = time.time()
+        print('{} started...'.format(self.desc))
+    def __exit__(self, type, value, traceback):
+        if len(self.kwargs)==0:
+            print('{}{} complete in {}{}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),self.pad))
+        else:
+            print('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad))
+
 # annoy returns euclidean distance of normed vector
 # (i.e. sqrt(2-2*cos(u, v))), so this just converts
 # to standard cosine distance
@@ -40,7 +55,10 @@ def convert_distance(d):
    return (d**2) /2
 vec_convert_distance = np.vectorize(convert_distance)
 
+
+
 # computes LDE w.r.t. a reference year when index type is `per_year`
+# NOT USABLE AS IS (needs new wrapper function, etc.) but leaving function in for reference
 def mean_neighbor_dist_peryear(i,reference_year=None):
 
     year = index_years[i]
@@ -55,43 +73,66 @@ def mean_neighbor_dist_peryear(i,reference_year=None):
         return convert_distance(np.mean(distances))
 
 # computes LDE when index type is `global` or `global_norm`
+# NOT USABLE AS IS (needs new wrapper function, etc.) but leaving function in for reference
 def mean_neighbor_dist_global(i,reference_year=None):
     neighbors,distances = t.get_nns_by_item(idx, args.knn+1, search_k=args.search_k, include_distances=True)
     return convert_distance(np.mean(distances[1:]))
 
+
+
 # computes LDE w.r.t to each year, as well as the neighbor distribution across years
 # ONLY VALID when index type is `global` or `global_norm`
-def lde (i):
-    neighbors,distances = t.get_nns_by_item(i, args.knn+1, search_k=args.search_k, include_distances=True)
+# query can be an integer (look up trained item) or  vector (look up held out item)
+def lde (query):
+    if type(query) in (np.int64,np.int32,int):
+        neighbors,distances = t.get_nns_by_item(query, args.knn+1, search_k=args.search_k, include_distances=True)
+    elif type(query) in (np.core.memmap,np.ndarray):
+        neighbors,distances = t.get_nns_by_vector(query, args.knn, search_k=args.search_k, include_distances=True)
+    else:
+        raise Exception("Invalid input")
     neighbors = np.array(neighbors[1:])
-    neighbor_years = index_years[neighbors]
+    neighbor_years = index_years_sampled[neighbors]
     d_result = np.repeat(np.nan,nyears)
     n_result = np.zeros(nyears,dtype=int)
     for y in year_range:
         idx = np.where(neighbor_years==y)[0]
         year = year_dict[y]
-        d_result[year] = convert_distance(np.mean([distances[i] for i in idx]))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            d_result[year] = convert_distance(np.mean([distances[i] for i in idx]))
         n_result[year] = len(idx)
     return d_result,n_result
 
 
-def wrapper(year):
-    current = np.where(index_years==year)[0]
-    total = len(current)
+def lde_wrapper(year):
     with open('{}results_{}'.format(result_path,year),'w') as out:
-        for i,doc in enumerate(current):
-            if i%100==0:
-                print("{}: {}/{} ({:.2f}%)".format(year,i,total,100*(i/total)))
+        current = np.where(index_years_sampled==year)[0]
+        current_untrained = untrained[np.where(index_years[untrained]==2015)[0]]
+        total = len(current)+len(current_untrained)
+        done = 0
+        for doc in current:
+            if done%100==0:
+                print("{}: {}/{} ({:.2f}%)".format(year,done,total,100*(done/total)))
                 out.flush()
             d,n = lde(doc)
             out.write("{}\t{}\t{}\n".format(indices[doc],','.join(map(str,d)),','.join(map(str,n))))
+            done +=1
+        for doc in current_untrained:
+            if done%100==0:
+                print("{}: {}/{} ({:.2f}%)".format(year,done,total,100*(done/total)))
+                out.flush()
+            d,n = lde(features[doc])
+            out.write("{}\t{}\t{}\n".format(doc,','.join(map(str,d)),','.join(map(str,n))))
+            done +=1
 
 
 if __name__ == '__main__':
     # chunksize=1000
 
     parser = argparse.ArgumentParser(help_string)
-    parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0' (see gensim doc2vec documentation for details of these parameters)",type=str)
+    # DEBUG LINE:
+    parser.add_argument("--params", default='100-5-5',help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
+    #parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--index_type", help="Type of knn index to load/generate.",default='global-norm',choices=['global','global-norm','per_year'])
     parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to directory from which this script is run",default='./')
     parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only  useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. IMPORTANT NOTE: if this arg is unspecified and running in `global-norm`, the first global-norm index found in `index_dir` will be loaded (if none exists, a new one is generated).",default=None)
@@ -104,6 +145,9 @@ if __name__ == '__main__':
     parser.add_argument("--docs_per_year",help="number of papers to sample from each year when building `global-norm` annoy index. Deaults to number in year with least documents.",default=None,type=int)
     parser.add_argument("--result_dir",help="Output directory for results. A subfolder in this directory (named with relevant params) will be created here. Defaults to current dir.",default='./',type=str)
     args = parser.parse_args()
+
+    if args.index_type != 'global_norm':
+        raise Exception("LDE methods for {} index type are not implemented.")
 
     if args.search_k is None:
         args.search_k = args.trees * args.knn
@@ -149,13 +193,21 @@ if __name__ == '__main__':
                 t.add_item(i, vec)
             t.build(args.trees) 
             t.save(args.index_dir+'index_global_{}.ann'.format(args.trees))
+            del features
+       
 
     elif args.index_type=='per_year':
 
         indexes = {}
         
         # we just check if the first year of the date range exists. If not, build all indexes
-        if not os.path.exists(args.index_dir+'index_{}_{}.ann'.format(year_range[0],trees)):
+        if os.path.exists(args.index_dir+'index_{}_{}.ann'.format(year_range[0],trees)):
+            for year in tq(year_range):
+                t= AnnoyIndex(f,metric='angular')
+                t.load('index_{}_{}.ann'.format(year,args.trees))
+                indexes[year] = t
+
+        else:
             if args.params.split('-')[-1] == 'None':
                 features = np.load('{0}{1}/model_{1}.docvecs.doctag_syn0.npy'.format(args.d2vdir,args.params))
             else:
@@ -168,13 +220,16 @@ if __name__ == '__main__':
                 t.build(args.trees) 
                 t.save(args.index_dir+'index_{}_{}.ann'.format(year,args.trees))
                 indexes[year] = t
-        else:
-            for year in tq(year_range):
-                t= AnnoyIndex(f,metric='angular')
-                t.load('index_{}_{}.ann'.format(year,args.trees))
-                indexes[year] = t
+            del features
+
 
     elif args.index_type == 'global-norm':
+
+        # we mmap these to facilitate parallel computations
+        if args.params.split('-')[-1] == 'None':
+            features = np.load('{0}{1}/model_{1}.docvecs.doctag_syn0.npy'.format(args.d2vdir,args.params),mmap_mode='r')
+        else:
+            features = np.load('{0}{1}/doc_features_expanded_{1}.npy'.format(args.d2vdir,args.params),mmap_mode='r')
 
         t = AnnoyIndex(f,metric='angular')
         existing = glob.glob('{}index_norm_{}_*.ann'.format(args.index_dir,args.trees))
@@ -201,8 +256,10 @@ if __name__ == '__main__':
             indices = np.concatenate(indices)
             np.save('{}index_norm_{}_{}.ann.indices'.format(args.index_dir,arg.trees,seed),indices)
 
-            t.build(args.trees) 
-            t.save('{}index_norm_{}_{}.ann'.format(args.index_dir,arg.trees,seed))
+            with timed('building index'):
+                t.build(args.trees) 
+            with timed('saving index'):
+                t.save('{}index_norm_{}_{}.ann'.format(args.index_dir,arg.trees,seed))
 
         else:
             if args.index_seed is not None:
@@ -216,40 +273,14 @@ if __name__ == '__main__':
                 indices = np.load(existing[0]+'.indices.npy')
 
         #dict_indices = {raw_idx:i for i,raw_idx in enumerate(indices)}
-        index_years = index_years[indices]
-
-
-
-    # within-year density over time, all papers
+        index_years_sampled = index_years[indices]
+        untrained = np.delete(np.ogrid[:len(features)],indices)
 
 
 
     pool = mp.Pool(args.procs)
     pool.map(wrapper,year_range)
     pool.terminate()
-
-    # #### JOURNAL LIMITED
-    # index_journals = np.load('/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/index_journals.npy')
-    # ids,counts= np.unique(index_journals,return_counts=True)
-
-    # pool = mp.Pool(n_procs)
-    # for journal in tq(np.where(counts>=100)[0][6:]):
-    #     with open('journal_results_{}_{}'.format(journal,knn),'w') as out:
-    #         current = np.where(index_journals==journal)[0]
-    #         for i,d in tq(zip(current,pool.imap(local_dens_over_time,current,chunksize=chunksize)),total=len(current)):
-    #             out.write("{}\t{}\t{}\n".format(i,index_years[i],','.join(map(str,d))))
-    # pool.terminate()
-    
-    
-    #### INCOMPLETE
-    # cat_year_indices = pickle.load(open('/backup/home/jared/eval_wos/cat_year_indices.pkl','rb'))
-    # pool = mp.Pool(n_procs)
-    # for cat in range(251):
-    #     with open('cat_results_{}_{}_{}'.format(cat,year,knn),'w') as out:
-    #         for year in year_range:
-    #             for i in cat_year_indices[cat][year]
-    #                 out.write()
-
 
 
    

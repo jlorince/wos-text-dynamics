@@ -1,6 +1,6 @@
 from gensim.models.doc2vec import Doc2Vec,TaggedLineDocument,TaggedDocument
 from gensim import utils
-import gzip,os,glob,time,datetime,sys
+import gzip,os,glob,time,datetime,sys,argparse
 import numpy as np
 from tqdm import tqdm as tq
 from nltk.tokenize import word_tokenize
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     parser.add_argument("--preprocess", action='store_true',help="Perform initial preprocessing of raw data files.")
     parser.add_argument("--year_sample", action='store_true',help="If provided, randomly sample an equal number of documents from each year.")
     parser.add_argument("--raw_text_dir", help="Location of the raw text files. Assumes there is one file per year, and eah file has one line per document in the format 'ID <tab> text...'. Argument ignored if `preprocess` not set to true.",type=str,default='P:/Projects/WoS/parsed/abstracts/')
-      parser.add_argument("--d2v_dir", help="Output directory. A new subfolder in this directory will be generated for each new model run",type=str,default='P:/Projects/WoS/wos-text-dynamics-data/d2v-wos/')
+    parser.add_argument("--d2v_dir", help="Output directory. A new subfolder in this directory will be generated for each new model run",type=str,default='P:/Projects/WoS/wos-text-dynamics-data/d2v-wos/')
 
     args = parser.parse_args()
 
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     if args.year_sample:
         #### Generate Randomized year-matched samples
-        index_years = np.load(args.d2vdir+'index_years.npy')
+        index_years = np.load(args.d2v_dir+'index_years.npy')
         seed = np.random.randint(999999)
         print('----RANDOM SEED = {}----'.format(seed))
         np.random.seed(seed)
@@ -114,7 +114,6 @@ if __name__ == '__main__':
         for year in tq(years):
             indices_to_write.append(np.random.choice(np.where(index_years==year)[0],counts.min(),replace=False))
         indices_to_write = np.concatenate(indices_to_write)
-        np.save(args.d2v_dir+'docs_indices_sampled_{}.npy'.format(seed),indices_to_write)
         index_set = set(indices_to_write)
 
         # with gzip.open(args.d2v_dir+'docs.txt.gz') as fin,\
@@ -134,8 +133,12 @@ if __name__ == '__main__':
         documents = TaggedLineDocument(args.d2v_dir+'docs.txt.gz')
 
     pathname = "{}-{}-{}-{}-{}".format(args.size,args.window,args.min_count,args.sample,seed)
-    if os.path.exists(args.d2vdir+pathname):
+    if os.path.exists(args.d2v_dir+pathname):
         raise Exception("It appears this model has already been run.")
+    else:
+        os.mkdir(args.d2v_dir+pathname)
+    if args.year_sample:
+        np.save('{}{}/doc_indices_sampled_{}.npy'.format(args.d2v_dir,pathname,seed),indices_to_write)
            
 
 
@@ -160,9 +163,7 @@ with timed('Norming vectors'):
     words_normed = nrm.fit_transform(model.wv.syn0)
 
 
-with timed('Saving data'):
-    if not os.path.exists(args.d2v_dir+pathname):
-        os.mkdir(args.d2v_dir+pathname)
+with timed('Saving data'):        
     np.save('{0}{1}/doc_features_normed_{1}.npy'.format(args.d2v_dir,pathname),normed)
     np.save('{0}{1}/word_features_normed_{1}.npy'.format(args.d2v_dir,pathname),words_normed)
     model.save('{0}{1}/model_{1}'.format(args.d2v_dir,pathname))
