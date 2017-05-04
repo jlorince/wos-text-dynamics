@@ -30,6 +30,7 @@ We can generate (or load) three types of annoy knn indexes:
 
 Use the index_seed argument to load an existing global-norm specified by the provided values of `trees` and `index_seed`. Otherwise this will always generate a new index.
 
+You MUST specify the param argument so script knows what d2v model to load.
 
 Annoy documentation: https://github.com/spotify/annoy
 Doc2Vec documentation: https://radimrehurek.com/gensim/models/doc2vec.html
@@ -143,7 +144,7 @@ if __name__ == '__main__':
     #parser.add_argument("--params", default='100-5-5',help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--index_type", help="Type of knn index to load/generate. Default is global-norm (other options not fully implemented)",default='global-norm',choices=['global','global-norm','per_year'])
-    parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to same directory as d2vdir",default=)
+    parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to same directory as d2vdir",default=None)
     parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. If unspecified a new model will be generated.",default=None)
     parser.add_argument("--d2vdir",help="path to doc2vec model directory",default='/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/',type=str)
     parser.add_argument("--procs",help="Specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
