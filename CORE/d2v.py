@@ -112,7 +112,8 @@ if __name__ == '__main__':
         years,counts = np.unique(index_years,return_counts=True)
         indices_to_write = []
         for year in tq(years):
-            indices_to_write.append(np.random.choice(np.where(index_years==year)[0],counts.min(),replace=False))
+            #indices_to_write.append(np.random.choice(np.where(index_years==year)[0],counts.min(),replace=False))
+            indices_to_write.append(np.random.choice(np.where(index_years==year)[0],10000,replace=False)) # debug
         indices_to_write = np.concatenate(indices_to_write)
         index_set = set(indices_to_write)
 
