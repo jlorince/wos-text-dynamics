@@ -28,7 +28,7 @@ We can generate (or load) three types of annoy knn indexes:
     - THIS IS THE ONLY METHOD FULLY IMPLEMENTED RIGHT NOW
 - per_year: Generates an independent index for each year, stored in a separate file.
 
-Use the index_seed argument to load an existing global_norm specified by the provided values of `trees` and `index_seed`. Otherwise this will always generate a new index.
+Use the index_seed argument to load an existing global-norm specified by the provided values of `trees` and `index_seed`. Otherwise this will always generate a new index.
 
 
 Annoy documentation: https://github.com/spotify/annoy
@@ -81,7 +81,7 @@ def mean_neighbor_dist_peryear(i,reference_year=None):
         neighbors,distances = indexes[reference_year].get_nns_by_vector(vec, n, search_k=search_k, include_distances=True)
         return convert_distance(np.mean(distances))
 
-# computes LDE when index type is `global` or `global_norm`
+# computes LDE when index type is `global` or `global-norm`
 # NOT USABLE AS IS (needs new wrapper function, etc.) but leaving function in for reference
 def mean_neighbor_dist_global(i,reference_year=None):
     neighbors,distances = t.get_nns_by_item(idx, args.knn+1, search_k=args.search_k, include_distances=True)
@@ -90,7 +90,7 @@ def mean_neighbor_dist_global(i,reference_year=None):
 
 
 # computes LDE w.r.t to each year, as well as the neighbor distribution across years
-# ONLY VALID when index type is `global` or `global_norm`
+# ONLY VALID when index type is `global` or `global-norm`
 # query can be an integer (look up trained item) or  vector (look up held out item)
 def lde (query):
     if type(query) in (np.int64,np.int32,int):
@@ -142,31 +142,33 @@ if __name__ == '__main__':
     # DEBUG LINE:
     #parser.add_argument("--params", default='100-5-5',help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
-    parser.add_argument("--index_type", help="Type of knn index to load/generate.",default='global-norm',choices=['global','global-norm','per_year'])
-    parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to directory from which this script is run",default='./')
+    parser.add_argument("--index_type", help="Type of knn index to load/generate. Default is global-norm (other options not fully implemented)",default='global-norm',choices=['global','global-norm','per_year'])
+    parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to same directory as d2vdir",default=)
     parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. If unspecified a new model will be generated.",default=None)
     parser.add_argument("--d2vdir",help="path to doc2vec model directory",default='/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/',type=str)
     parser.add_argument("--procs",help="Specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
-    parser.add_argument("--knn",help="number of nearest neighbors to be used in density computations",default=1000,type=int)
-    parser.add_argument("--trees",help="number of projection trees for knn index (see annoy documentation)",default=100,type=int)
+    parser.add_argument("--knn",help="number of nearest neighbors to be used in density computations, default=1000",default=1000,type=int)
+    parser.add_argument("--trees",help="number of projection trees for knn index, default=100 (see annoy documentation)",default=100,type=int)
     parser.add_argument("--search_k",help="search_k paramter for knn index, default = `trees`*`knn` (see annoy documentation)",default=None,type=int)
-    parser.add_argument("--docs_per_year",help="number of papers to sample from each year when building `global-norm` annoy index. Deaults to number in year with least documents.",default=None,type=int)
-    parser.add_argument("--result_dir",help="Output directory for results. A subfolder in this directory (named with relevant params) will be created here. Defaults to current dir.",default='./',type=str)
+    parser.add_argument("--docs_per_year",help="number of papers to sample from each year when building `global-norm` annoy index. Deafults to number in year with least documents.",default=None,type=int)
+    parser.add_argument("--result_dir",help="Output directory for results. A subfolder in this directory (named with relevant params) will be created here. Defaults to d2vdir.",default=None,type=str)
     args = parser.parse_args()
 
-    if args.index_type != 'global_norm':
+    ### ARGUMENT SETUP
+    if args.index_type != 'global-norm':
         raise Exception("LDE methods for {} index type are not implemented.")
-
     if args.search_k is None:
         args.search_k = args.trees * args.knn
-
     if args.index_type == 'per_year':
         mean_neighbor_dist = mean_neighbor_dist_peryear
     else:
         mean_neighbor_dist = mean_neighbor_dist_global
-
-    if (args.index_type=='global_norm') and (args.index_seed is None):
+    if (args.index_type=='global-norm') and (args.index_seed is None):
         args.index_seed = np.random.randint(999999)
+    if args.index_dir is None:
+        args.index_dir = args.d2vdir
+    if args.result_dir is None:
+        args.result_dir = args.d2vdir
 
     result_path = args.result_dir+'_'.join([str(v) for v in [args.params,args.index_type,args.index_seed,args.knn,args.trees,args.search_k,args.docs_per_year]])+'/'
     if os.path.exists(result_path):
