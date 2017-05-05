@@ -50,10 +50,7 @@ if __name__ == '__main__':
     if args.sampling == 'random':
         print "generating random sample..."
         random_indices = np.random.choice(xrange(len(features)),s,replace=False)
-        if args.sample_size%1000000==0:
-            filename = '.indices_{}M'.format(int(args.sample_size/1000000))
-        else:
-            filename = '.indices_{}'.format(args.sample_size)
+        filename = '.indices_{}.npy'.format(args.sample_size)
         np.save(args.input+filename,random_indices)
         features = features[random_indices]
 
@@ -67,7 +64,6 @@ if __name__ == '__main__':
         idx_filename = '.indices_year_{}.npy'.format(args.sample_size)
         np.save(args.input+idx_filename,random_indices)
         features = features[random_indices]
-
 
     # now we write the data to file in the required LargeVis format (which requires a header 
     # with the number of items and the dimensionality of the feature vectors)
@@ -83,15 +79,9 @@ if __name__ == '__main__':
 
     Y = LargeVis.run(2, args.threads, args.samples, args.prop, args.alpha, args.trees, args.neg, args.neigh, args.gamma, args.perp)
     if arg.sampling == 'by_year':
-        if args.sample_size is not None and args.sample_size%1000000==0:
-            filename = '.{}M.year_lv_coords'.format(int(args.sample_size/1000000))
-        else:
-            filename = '.{}.year.lv_coords'.format(args.sample_size)
+        filename = '.{}.year_lv_coords'.format(args.sample_size)
     else:
-        if args.sample_size is not None and args.sample_size%1000000==0:
-            filename = '.{}M.lv_coords'.format(int(args.sample_size/1000000))
-        else:
-            filename = '.{}.lv_coords'.format(args.sample_size)
+        filename = '.{}.lv_coords'.format(args.sample_size)
     LargeVis.save(args.infile+filename)
 
     donestring = """
