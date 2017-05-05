@@ -137,11 +137,11 @@ def lde_wrapper(year):
 
 
 if __name__ == '__main__':
-    
+
     parser = argparse.ArgumentParser(help_string)
     # DEBUG LINE:
-    parser.add_argument("--params", default='100-5-5-0.001-None',help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
-    #parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
+    #parser.add_argument("--params", default='100-5-5-0.001-None',help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
+    parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--index_type", help="Type of knn index to load/generate. Default is global-norm (other options not fully implemented)",default='global-norm',choices=['global','global-norm','per_year'])
     parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to same directory as d2v model files",default=None)
     parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. If unspecified a new model will be generated.",default=None)
