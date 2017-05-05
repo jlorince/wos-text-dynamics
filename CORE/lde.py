@@ -117,7 +117,7 @@ def lde (query):
 def lde_wrapper(year):
     with open('{}results_{}'.format(result_path,year),'w') as out:
         current = np.where(index_years_sampled==year)[0]
-        current_untrained = untrained[np.where(index_years[untrained]==2015)[0]]
+        current_untrained = untrained[np.where(index_years[untrained]==year)[0]]
         total = len(current)+len(current_untrained)
         done = 0
         for doc in current:
@@ -137,12 +137,11 @@ def lde_wrapper(year):
 
 
 if __name__ == '__main__':
-    # chunksize=1000
-
+    
     parser = argparse.ArgumentParser(help_string)
     # DEBUG LINE:
-    #parser.add_argument("--params", default='100-5-5',help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
-    parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
+    parser.add_argument("--params", default='100-5-5-0.001-None',help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
+    #parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--index_type", help="Type of knn index to load/generate. Default is global-norm (other options not fully implemented)",default='global-norm',choices=['global','global-norm','per_year'])
     parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to same directory as d2v model files",default=None)
     parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. If unspecified a new model will be generated.",default=None)
@@ -168,11 +167,6 @@ if __name__ == '__main__':
         args.index_dir = args.d2vdir+args.params+'/'
     if args.result_dir is None:
         args.result_dir = args.d2vdir+args.params+'/'
-
-    result_path = args.result_dir+'_'.join([str(v) for v in [args.params,args.index_type,args.index_seed,args.knn,args.trees,args.search_k,args.docs_per_year]])+'/'
-    if os.path.exists(result_path):
-        raise Exception("Result directory already exists!!")
-    os.mkdir(result_path)
 
     # index years contains the publication year for each document
     index_years = np.load(args.d2vdir+'index_years.npy')
@@ -262,7 +256,7 @@ if __name__ == '__main__':
 
             if args.docs_per_year is None:
                 unique_years,unique_year_counts = np.unique(index_years,return_counts=True)
-                args.docs_per_year = np.argmin(np.argmin(unique_year_counts))
+                args.docs_per_year = unique_year_counts.min()
             
             for year in tq(year_range):
                 idx_current = np.random.choice(np.where(index_years==year)[0],args.docs_per_year,replace=False)
@@ -281,6 +275,11 @@ if __name__ == '__main__':
 
         index_years_sampled = index_years[indices]
         untrained = np.delete(np.ogrid[:len(features)],indices)
+
+        result_path = args.result_dir+'_'.join([str(v) for v in [args.params,args.index_type,args.index_seed,args.knn,args.trees,args.search_k,args.docs_per_year]])+'/'
+        if os.path.exists(result_path):
+            raise Exception("Result directory already exists!!")
+        os.mkdir(result_path)
 
 
     pool = mp.Pool(args.procs)

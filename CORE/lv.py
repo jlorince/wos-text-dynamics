@@ -30,7 +30,7 @@ if __name__ == '__main__':
     parser.add_argument("--threads", help="Numer of parallel threads for largevis algorithm to use. Defaults to output of mp.cpu_count()",type=int,default=mp.cpu_count())
     parser.add_argument("--sampling", help="Method for randomly downsampling points. If `random` is used, `sample_size` total points are sampled. if `by_year`, randomly sample `sample_size` points *from each year* are sampled. Defaults to using all points in the input array.",type=str,default=None,choices=['random','by_year'])
     parser.add_argument("--sample_size", help="Number of points to randomly sample. See `sampling`. Ignored if `sampling` is not specified.",type=int,default=None)
-    parser.add_argument('--input', help = 'input numpy file (assumed to be n_items x n_features numpy array)')
+    parser.add_argument('--input', required=True,help = 'input numpy file (assumed to be n_items x n_features numpy array)')
     parser.add_argument('--years', help = 'Path to numpy file with year for each document. Only used if `sampling`="by_year"', default='/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/index_years.npy',dtype=str)
     
     parser.add_argument('--prop', default = -1, type = int, help = 'number of propagations (see largevis documentation). Default 3.')
@@ -64,8 +64,8 @@ if __name__ == '__main__':
         for year in tq(years):
             random_indices.append(np.random.choice(np.where(index_years==year)[0],args.sample_size,replace=False))
         random_indices = np.concatenate(random_indices)
-        filename = '.indices_year_{}'.format(args.sample_size)
-        np.save(args.input+filename,random_indices)
+        idx_filename = '.indices_year_{}.npy'.format(args.sample_size)
+        np.save(args.input+idx_filename,random_indices)
         features = features[random_indices]
 
 
@@ -93,4 +93,11 @@ if __name__ == '__main__':
         else:
             filename = '.{}.lv_coords'.format(args.sample_size)
     LargeVis.save(args.infile+filename)
+
+    donestring = """
+    -----PROCESSING COMPLETE-----
+    2D Embedding saved as: {}
+    Random indices saves as as: {}
+    """.format(args.infile+filename,args.input+idx_filename)
+
 
