@@ -16,22 +16,44 @@ from scipy.spatial.distance import pdist,cdist
 # sys.path[0] = src_dir
 
 path_data = os.path.abspath('/scratch2/gerlach/Dropbox (Uzzi Lab)/WoS/wos-text-dynamics-data/d2v-wos')
-
+path_save = '../../results/doc2vec_robustness/'
 
 ## mapping of model and the corresponding filename
 
+# dict_model_fname = {
+#     '50-5-5-0': 'doc_features_normed_50-5-5-0.npy',\
+#     '50-5-5-0.00005' : 'doc_features_normed_50-5-5.npy',\
+#     '100-5-5-0': 'doc_features_normed.npy',\
+#     '200-5-5-0': 'doc_features_normed_200-5-5-0.npy',\
+#     '200-5-5-0.00005' : 'doc_features_normed_200-5-5.npy',\
+#     '300-5-5-0.00005': 'doc_features_normed_300-5-5.npy'
+# }
+
+# dict_model_fname = {
+#     '50-5-5-0': 'doc_features_normed_50-5-5-0.npy',\
+#     '100-5-5-0': 'doc_features_normed.npy',\
+#     '200-5-5-0': 'doc_features_normed_200-5-5-0.npy',\
+# }
 dict_model_fname = {
-    '50-5-5-0': 'doc_features_normed_50-5-5-0.npy',\
-    '50-5-5-9-0.00005' : 'doc_features_normed_50-5-5.npy',\
-    '100-5-5-0': 'doc_features_normed.npy',\
-    '200-5-5-0': 'doc_features_normed_200-5-5-0.npy',\
+    '50-5-5-0.00005' : 'doc_features_normed_50-5-5.npy',\
     '200-5-5-0.00005' : 'doc_features_normed_200-5-5.npy',\
     '300-5-5-0.00005': 'doc_features_normed_300-5-5.npy'
 }
+
+# dict_model_fname = {
+#     '50-5-5-0': 'doc_features_normed_50-5-5-0.npy',\
+#     '50-5-5-0.00005' : 'doc_features_normed_50-5-5.npy',\
+# }
+# dict_model_fname = {
+#     '200-5-5-0': 'doc_features_normed_200-5-5-0.npy',\
+#     '200-5-5-0.00005' : 'doc_features_normed_200-5-5.npy',\
+# }
+
+
 N =  22606989 # number of elements (fixed)
 
 ## parameters
-N_pairs = 10**2 # howmany pairs to compare
+N_pairs = 10**4 # howmany pairs to compare
 # n_seed = 10
 metric = 'cosine' # which metric to use, default: cosine
 
@@ -42,7 +64,8 @@ print(list_models)
 
 for i_m1,model1 in enumerate(list_models):
     for i_m2,model2 in enumerate(list_models):
-        if i_m1>i_m2:
+        if i_m1<i_m2:
+            print(model1,model2)
 
             # model1 = '100-5-5-0'
             # model2 = '50-5-5-0'
@@ -66,7 +89,7 @@ for i_m1,model1 in enumerate(list_models):
             i1,i2=0,0
 
 
-            with open(filename_save,'w') as f:
+            with open(os.path.join(path_save,filename_save),'w') as f:
                 for i in range(N_pairs):
                     i1,i2=0,0
                     while i1 == i2:
