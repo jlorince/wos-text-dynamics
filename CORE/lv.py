@@ -32,7 +32,6 @@ if __name__ == '__main__':
     parser.add_argument("--sample_size", help="Number of points to randomly sample. See `sampling`. Ignored if `sampling` is not specified.",type=int,default=None)
     parser.add_argument('--input', required=True,help = 'input numpy file (assumed to be n_items x n_features numpy array)')
     parser.add_argument('--years', help = 'Path to numpy file with year for each document. Only used if `sampling`="by_year"', default='/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/index_years.npy',dtype=str)
-    
     parser.add_argument('--prop', default = -1, type = int, help = 'number of propagations (see largevis documentation). Default 3.')
     parser.add_argument('--alpha', default = -1, type = float, help = 'learning rate (see largevis documentation). Default 1.0')
     parser.add_argument('--trees', default = -1, type = int, help = 'number of rp-trees (see largevis documentation). Default is set according to the data size.')

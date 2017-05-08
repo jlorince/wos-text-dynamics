@@ -72,10 +72,15 @@ if __name__ == '__main__':
     parser.add_argument("--workers", help="Number of workers to use in parallel computations. Defaults to output of mp.cpu_count()",type=int,default=mp.cpu_count())
     parser.add_argument("--preprocess", action='store_true',help="Perform initial preprocessing of raw data files.")
     parser.add_argument("--year_sample", action='store_true',help="If provided, randomly sample an equal number of documents from each year.")
+    parser.add_argument("--norm", action='store_true',help="If provided, also generate l2-normed word and document vector arrays.")
     parser.add_argument("--raw_text_dir", help="Location of the raw text files. Assumes there is one file per year, and eah file has one line per document in the format 'ID <tab> text...'. Argument ignored if `preprocess` not set to true.",type=str,default='P:/Projects/WoS/parsed/abstracts/')
     parser.add_argument("--d2v_dir", help="Output directory. A new subfolder in this directory will be generated for each new model run",type=str,default='P:/Projects/WoS/wos-text-dynamics-data/d2v-wos/')
 
     args = parser.parse_args()
+
+    # in case user forgets trailing slash
+    if not args.d2v_dir.endswith('/'):
+        args.d2v_dir = args.d2v_dir + '/'
 
 
     if args.preprocess:
@@ -145,51 +150,53 @@ if __name__ == '__main__':
            
 
 
-with timed('Running Doc2Vec'):
-    model = Doc2Vec(documents, dm=1, sample=args.sample, size=args.size, window=args.window, min_count=args.min_count,workers=args.workers)
+    with timed('Running Doc2Vec'):
+        model = Doc2Vec(documents, dm=1, sample=args.sample, size=args.size, window=args.window, min_count=args.min_count,workers=args.workers)
 
 
-if args.year_sample:
-    with timed('Inferring vectors for unseen documents'):
-        expanded_docvecs = np.empty((documents.n_docs,args.size))
-        expanded_docvecs[indices_to_write] = model.docvecs.doctag_syn0
-    
-        #--------------------
-        # Parallel version has been problematic and is disabled for now
-        #--------------------
+    if args.year_sample:
+        with timed('Inferring vectors for unseen documents'):
+            expanded_docvecs = np.empty((documents.n_docs,args.size))
+            expanded_docvecs[indices_to_write] = model.docvecs.doctag_syn0
         
-        # if platform.system()!='Windows':
-        #     def wrapper(tup):
-        #         i,doc = tup
-        #         return i,model.infer_vector(doc)
-        #     pool = mp.Pool(args.workers)
-        #     total=documents.n_docs-len(indices_to_write)
-        #     start = time.time()
-        #     chunksize = floor(total/args.workers)
-        #     for i,(idx,docvec) in enumerate(pool.imap_unordered(wrapper,documents.iter_skipped(),chunksize=chunksize),1):
-        #         if i%chunksize==0:
-        #             eta = ((time.time()-start)/i) * (total-i)
-        #             print("{}/{} documents processed ({:.2f}%) - time elapsed: {} - eta: {}".format(i,total,100*(i/total),str(datetime.timedelta(seconds=time.time()-start)),str(datetime.timedelta(seconds=eta))))
-        #         expanded_docvecs[idx] = docvec
-        #     pool.terminate()
-        # else:
-        for i,doc in tq(documents.iter_skipped(),total=documents.n_docs-len(indices_to_write)):
-            expanded_docvecs[i] = model.infer_vector(doc)
+            #--------------------
+            # Parallel version has been problematic and is disabled for now
+            #--------------------
+            
+            # if platform.system()!='Windows':
+            #     def wrapper(tup):
+            #         i,doc = tup
+            #         return i,model.infer_vector(doc)
+            #     pool = mp.Pool(args.workers)
+            #     total=documents.n_docs-len(indices_to_write)
+            #     start = time.time()
+            #     chunksize = floor(total/args.workers)
+            #     for i,(idx,docvec) in enumerate(pool.imap_unordered(wrapper,documents.iter_skipped(),chunksize=chunksize),1):
+            #         if i%chunksize==0:
+            #             eta = ((time.time()-start)/i) * (total-i)
+            #             print("{}/{} documents processed ({:.2f}%) - time elapsed: {} - eta: {}".format(i,total,100*(i/total),str(datetime.timedelta(seconds=time.time()-start)),str(datetime.timedelta(seconds=eta))))
+            #         expanded_docvecs[idx] = docvec
+            #     pool.terminate()
+            # else:
+            for i,doc in tq(documents.iter_skipped(),total=documents.n_docs-len(indices_to_write)):
+                expanded_docvecs[i] = model.infer_vector(doc)
+
+    if args.norm:
+        with timed('Norming vectors'):
+            from sklearn.preprocessing import Normalizer
+            nrm = Normalizer('l2')
+            normed = nrm.fit_transform(model.docvecs.doctag_syn0)
+            if args.year_sample:
+                normed_expanded = nrm.fit_transform(expanded_docvecs)
+            words_normed = nrm.fit_transform(model.wv.syn0)
 
 
-with timed('Norming vectors'):
-    from sklearn.preprocessing import Normalizer
-    nrm = Normalizer('l2')
-    normed = nrm.fit_transform(model.docvecs.doctag_syn0)
-    if args.year_sample:
-        normed_expanded = nrm.fit_transform(expanded_docvecs)
-    words_normed = nrm.fit_transform(model.wv.syn0)
-
-
-with timed('Saving data'):        
-    np.save('{0}{1}/doc_features_normed_{1}.npy'.format(args.d2v_dir,pathname),normed)
-    np.save('{0}{1}/word_features_normed_{1}.npy'.format(args.d2v_dir,pathname),words_normed)
-    model.save('{0}{1}/model_{1}'.format(args.d2v_dir,pathname))
-    if args.year_sample:
-        np.save('{0}{1}/doc_features_expanded_{1}.npy'.format(args.d2v_dir,pathname),expanded_docvecs)
-        np.save('{0}{1}/doc_features_expanded_normed_{1}.npy'.format(args.d2v_dir,pathname),normed_expanded)
+    with timed('Saving data'):        
+        if args.norm:
+            np.save('{0}{1}/doc_features_normed_{1}.npy'.format(args.d2v_dir,pathname),normed)
+            np.save('{0}{1}/word_features_normed_{1}.npy'.format(args.d2v_dir,pathname),words_normed)
+        model.save('{0}{1}/model_{1}'.format(args.d2v_dir,pathname))
+        if args.year_sample:
+            np.save('{0}{1}/doc_features_expanded_{1}.npy'.format(args.d2v_dir,pathname),expanded_docvecs)
+            if args.norm:
+                np.save('{0}{1}/doc_features_expanded_normed_{1}.npy'.format(args.d2v_dir,pathname),normed_expanded)
