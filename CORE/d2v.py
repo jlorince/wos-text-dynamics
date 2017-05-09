@@ -68,13 +68,15 @@ if __name__ == '__main__':
     parser.add_argument("--size", help="Dimensionality of D2V vectors (see Doc2Vec documentation).",type=int,default=100)
     parser.add_argument("--window", help="Doc2Vec window size (see Doc2Vec documentation).",type=int,default=5)
     parser.add_argument("--min_count", help="Mininum number of times a word must occur to be included in model (see Doc2Vec documentation).",type=int,default=5)
-    parser.add_argument("--sample", help="Threshold for configuring which higher-frequency words are randomly downsampled (see Doc2Vec documentation).",type=int,default=0)
+    parser.add_argument("--sample", help="Threshold for configuring which higher-frequency words are randomly downsampled (see Doc2Vec documentation).",type=float,default=0)
     parser.add_argument("--workers", help="Number of workers to use in parallel computations. Defaults to output of mp.cpu_count()",type=int,default=mp.cpu_count())
     parser.add_argument("--preprocess", action='store_true',help="Perform initial preprocessing of raw data files.")
     parser.add_argument("--year_sample", action='store_true',help="If provided, randomly sample an equal number of documents from each year.")
     parser.add_argument("--norm", action='store_true',help="If provided, also generate l2-normed word and document vector arrays.")
     parser.add_argument("--raw_text_dir", help="Location of the raw text files. Assumes there is one file per year, and eah file has one line per document in the format 'ID <tab> text...'. Argument ignored if `preprocess` not set to true.",type=str,default='P:/Projects/WoS/parsed/abstracts/')
     parser.add_argument("--d2v_dir", help="Output directory. A new subfolder in this directory will be generated for each new model run",type=str,default='P:/Projects/WoS/wos-text-dynamics-data/d2v-wos/')
+    parser.add_argument("--infer",help="If year_sample is true, specify this option infer document vectors for documents that were not included in model training.",action='store_true')
+
 
     args = parser.parse_args()
 
@@ -154,7 +156,7 @@ if __name__ == '__main__':
         model = Doc2Vec(documents, dm=1, sample=args.sample, size=args.size, window=args.window, min_count=args.min_count,workers=args.workers)
 
 
-    if args.year_sample:
+    if args.year_sample and args.infer:
         with timed('Inferring vectors for unseen documents'):
             expanded_docvecs = np.empty((documents.n_docs,args.size))
             expanded_docvecs[indices_to_write] = model.docvecs.doctag_syn0

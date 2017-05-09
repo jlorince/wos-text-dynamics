@@ -20,7 +20,7 @@ Results are saved in a direcotry specifed by the following:
 result_path = args.result_dir+'_'.join([str(v) for v in [args.params,args.index_type,args.index_seed,args.knn,args.trees,args.search_k,args.docs_per_year]])+'/'
 
 Example:
-100-5-5-None_global-norm_12345_1000_100_100000_None/
+100-5-5-0-None_global-norm_12345_1000_100_100000_None/
 
 We can generate (or load) three types of annoy knn indexes:
 - global: Put all documents into a single global index
@@ -125,16 +125,34 @@ def lde_wrapper(year):
                 print("{}: {}/{} ({:.2f}%)".format(year,done,total,100*(done/total)))
                 out.flush()
             d,n = lde(doc)
-            out.write("{}\t{}\t{}\n".format(indices[doc],','.join(map(str,d)),','.join(map(str,n))))
+            if d2v_indices_adjust:
+                out.write("{}\t{}\t{}\n".format(d2v_sampled_indices[indices[doc]],','.join(map(str,d)),','.join(map(str,n))))
+            else:
+                out.write("{}\t{}\t{}\n".format(indices[doc],','.join(map(str,d)),','.join(map(str,n))))
             done +=1
         for doc in current_untrained:
             if done%100==0:
                 print("{}: {}/{} ({:.2f}%)".format(year,done,total,100*(done/total)))
                 out.flush()
             d,n = lde(features[doc])
-            out.write("{}\t{}\t{}\n".format(doc,','.join(map(str,d)),','.join(map(str,n))))
+            if d2v_indices_adjust:
+                out.write("{}\t{}\t{}\n".format(d2v_sampled_indices[doc],','.join(map(str,d)),','.join(map(str,n))))
+            else:
+                out.write("{}\t{}\t{}\n".format(doc,','.join(map(str,d)),','.join(map(str,n))))
             done +=1
 
+def lde_wrapper_global(year):
+    with open('{}results_{}'.format(result_path,year),'w') as out:
+        current = np.where(index_years==year)[0]
+        total = len(current)
+        done = 0
+        for doc in current:
+            if done%100==0:
+                print("{}: {}/{} ({:.2f}%)".format(year,done,total,100*(done/total)))
+                out.flush()
+            d,n = lde(doc)
+            out.write("{}\t{}\t{}\n".format(d2v_sampled_indices[doc],','.join(map(str,d)),','.join(map(str,n))))
+            done +=1
 
 if __name__ == '__main__':
 
@@ -152,6 +170,8 @@ if __name__ == '__main__':
     parser.add_argument("--search_k",help="search_k paramter for knn index, default = `trees`*`knn` (see annoy documentation)",default=None,type=int)
     parser.add_argument("--docs_per_year",help="number of papers to sample from each year when building `global-norm` annoy index. Deafults to number in year with least documents.",default=None,type=int)
     parser.add_argument("--result_dir",help="Output directory for results. A subfolder in this directory (named with relevant params) will be created here. By default folder is generated inside d2vdir.",default=None,type=str)
+    parser.add_argument("--include_inf",help="Include documents for which we performed inference in the d2v model (only relevant if year smpling was used in d2v model training)",default=None,type=str)
+
     args = parser.parse_args()
 
     ### ARGUMENT SETUP
@@ -228,14 +248,22 @@ if __name__ == '__main__':
                 indexes[year] = t
             del features
 
-
+    
     elif args.index_type == 'global-norm':
 
+        d2v_seed = args.params.split('-')[-1] 
+
         # we mmap these to facilitate parallel computations
-        if args.params.split('-')[-1] == 'None':
-            features = np.load('{0}{1}/model_{1}.docvecs.doctag_syn0.npy'.format(args.d2vdir,args.params),mmap_mode='r')
-        else:
+        d2v_indices_adjust = False
+        if d2v_seed != 'None' and args.include_inf==True:
             features = np.load('{0}{1}/doc_features_expanded_{1}.npy'.format(args.d2vdir,args.params),mmap_mode='r')
+        else:
+            features = np.load('{0}{1}/model_{1}.docvecs.doctag_syn0.npy'.format(args.d2vdir,args.params),mmap_mode='r')
+            if d2v_seed != 'None':
+                d2v_indices_adjust = True
+                d2v_sampled_indices = np.load('{}{}/doc_indices_sampled_{}'.format(args.d2vdir,args.params,d2v_seed))
+                index_years = index_years[d2v_sampled_indices]
+
 
         t = AnnoyIndex(f,metric='angular')
 
@@ -247,34 +275,50 @@ if __name__ == '__main__':
                 raise Exception('You have specified an invalid seed (file does not exist)')
         
         else:
-            
-            indices = []
-            idx = 0
-            args.index_seed = np.random.randint(999999)
-            print('----RANDOM SEED = {}----'.format(args.index_seed))
-            np.random.seed(args.index_seed)
 
-            if args.docs_per_year is None:
-                unique_years,unique_year_counts = np.unique(index_years,return_counts=True)
-                args.docs_per_year = unique_year_counts.min()
-            
-            for year in tq(year_range):
-                idx_current = np.random.choice(np.where(index_years==year)[0],args.docs_per_year,replace=False)
-                indices.append(idx_current)
-                for vec in tq(features[idx_current]):
-                    t.add_item(idx, vec)
-                    idx+=1
+            if not d2v_indices_adjust:
 
-            indices = np.concatenate(indices)
-            np.save('{}index_norm_{}_{}.ann.indices'.format(args.index_dir,args.trees,args.index_seed),indices)
+                wrapper = lde_wrapper
+                
+                indices = []
+                idx = 0
+                args.index_seed = np.random.randint(999999)
+                print('----RANDOM SEED = {}----'.format(args.index_seed))
+                np.random.seed(args.index_seed)
 
-            with timed('building index'):
+                if args.docs_per_year is None:
+                    unique_years,unique_year_counts = np.unique(index_years,return_counts=True)
+                    args.docs_per_year = unique_year_counts.min()
+                
+                for year in tq(year_range):
+                    idx_current = np.random.choice(np.where(index_years==year)[0],args.docs_per_year,replace=False)
+                    indices.append(idx_current)
+                    for vec in tq(features[idx_current]):
+                        t.add_item(idx, vec)
+                        idx+=1
+
+                indices = np.concatenate(indices)
+                np.save('{}index_norm_{}_{}.ann.indices'.format(args.index_dir,args.trees,args.index_seed),indices)
+
+                with timed('building index'):
+                    t.build(args.trees) 
+                with timed('saving index'):
+                    t.save('{}index_norm_{}_{}.ann'.format(args.index_dir,args.trees,args.index_seed))
+
+            else:
+
+                wrapper = lde_wrapper_global
+
+                for i,vec in tq(enumerate(features)):
+                    t.add_item(i, vec)
                 t.build(args.trees) 
-            with timed('saving index'):
-                t.save('{}index_norm_{}_{}.ann'.format(args.index_dir,args.trees,args.index_seed))
+                t.save(args.index_dir+'index_global_{}.ann'.format(args.trees))
+                del features
 
-        index_years_sampled = index_years[indices]
-        untrained = np.delete(np.ogrid[:len(features)],indices)
+
+        if not d2v_indices_adjust:
+            index_years_sampled = index_years[indices]
+            untrained = np.delete(np.ogrid[:len(features)],indices)
 
         result_path = args.result_dir+'_'.join([str(v) for v in [args.params,args.index_type,args.index_seed,args.knn,args.trees,args.search_k,args.docs_per_year]])+'/'
         if os.path.exists(result_path):
@@ -283,5 +327,5 @@ if __name__ == '__main__':
 
 
     pool = mp.Pool(args.procs)
-    pool.map(lde_wrapper,year_range)
+    pool.map(wrapper,year_range)
     pool.terminate()
