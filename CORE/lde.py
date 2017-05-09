@@ -170,7 +170,7 @@ if __name__ == '__main__':
     parser.add_argument("--search_k",help="search_k paramter for knn index, default = `trees`*`knn` (see annoy documentation)",default=None,type=int)
     parser.add_argument("--docs_per_year",help="number of papers to sample from each year when building `global-norm` annoy index. Deafults to number in year with least documents.",default=None,type=int)
     parser.add_argument("--result_dir",help="Output directory for results. A subfolder in this directory (named with relevant params) will be created here. By default folder is generated inside d2vdir.",default=None,type=str)
-    parser.add_argument("--include_inf",help="Include documents for which we performed inference in the d2v model (only relevant if year smpling was used in d2v model training)",default=None,type=str)
+    parser.add_argument("--include_inf",help="Include documents for which we performed inference in the d2v model (only relevant if year smpling was used in d2v model training)",action='store_true')
 
     args = parser.parse_args()
 
