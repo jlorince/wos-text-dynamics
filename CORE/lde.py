@@ -261,7 +261,7 @@ if __name__ == '__main__':
             features = np.load('{0}{1}/model_{1}.docvecs.doctag_syn0.npy'.format(args.d2vdir,args.params),mmap_mode='r')
             if d2v_seed != 'None':
                 d2v_indices_adjust = True
-                d2v_sampled_indices = np.load('{}{}/doc_indices_sampled_{}'.format(args.d2vdir,args.params,d2v_seed))
+                d2v_sampled_indices = np.load('{}{}/doc_indices_sampled_{}.npy'.format(args.d2vdir,args.params,d2v_seed))
                 index_years = index_years[d2v_sampled_indices]
 
 
