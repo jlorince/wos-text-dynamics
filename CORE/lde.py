@@ -165,7 +165,7 @@ if __name__ == '__main__':
     parser.add_argument("--params", required=True,help="specify d2v model paramter in format 'size-window-min_count-sample', e.g. '100-5-5-0-None' (see gensim doc2vec documentation for details of these parameters)",type=str)
     parser.add_argument("--index_type", help="Type of knn index to load/generate. Default is global-norm (other options not fully implemented)",default='global-norm',choices=['global','global-norm','per_year'])
     parser.add_argument("--index_dir", help="Where annoy index files are located. Defaults to same directory as d2v model files",default=None)
-    parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. If unspecified a new model will be generated. If you want to load an existing non-sampled index, just set this to 0.",default=None)
+    parser.add_argument("--index_seed", help="Specify loading a random global-norm model with this seed. Only useful if doing multiple runs with the `global-norm` option and we want to run against a particular randomly seeded model. If unspecified a new model will be generated. If you want to load an existing *non-sampled index*, just set this to 0.",default=None)
     parser.add_argument("--d2vdir",help="path to doc2vec model directory",default='/backup/home/jared/storage/wos-text-dynamics-data/d2v-wos/',type=str)
     parser.add_argument("--procs",help="Specify number of processes for parallel computations (defaults to output of mp.cpu_count())",default=mp.cpu_count(),type=int)
     parser.add_argument("--knn",help="number of nearest neighbors to be used in density computations, default=1000",default=1000,type=int)
@@ -193,14 +193,6 @@ if __name__ == '__main__':
 
     # index years contains the publication year for each document
     index_years = np.load(args.d2vdir+'index_years.npy')
-
-    # If we split our index across multiple files, we need build a dict so we know
-    # the year for each document (these must be zero-indexed within each year's annoy index)
-    if args.index_type=='per_year':
-        per_year_indices = {}
-        for year in tq(year_range):
-            for i,idx in tq(enumerate(np.where(index_years==year)[0])):
-                per_year_indices[idx] = i
 
     # get dimensionality for index
     f = int(args.params.split('-')[0])
@@ -239,7 +231,7 @@ if __name__ == '__main__':
             
             indices = []
             idx = 0
-            args.index_seed = np.random.randint(999999)
+            args.index_seed = np.random.randint(1,999999)
             print('----RANDOM SEED = {}----'.format(args.index_seed))
             np.random.seed(args.index_seed)
 
@@ -293,6 +285,15 @@ if __name__ == '__main__':
 
     """ 
     #OLD CODE FOR OTHER INDEX TYPES
+    # If we split our index across multiple files, we need build a dict so we know
+    # the year for each document (these must be zero-indexed within each year's annoy index)
+    if args.index_type=='per_year':
+        per_year_indices = {}
+        for year in tq(year_range):
+            for i,idx in tq(enumerate(np.where(index_years==year)[0])):
+                per_year_indices[idx] = i
+
+
     if args.index_type=='global':
 
         t = AnnoyIndex(f,metric='angular')

@@ -36,7 +36,9 @@ class timed(object):
         else:
             print('{}{} complete in {} ({}){}'.format(self.pad,self.desc,str(datetime.timedelta(seconds=time.time()-self.start)),','.join(['{}={}'.format(*kw) for kw in self.kwargs.iteritems()]),self.pad))
 
-
+### Modified TaggedLineDocument Class
+# rather than iterating over all documents in the docs file, only yields those indexed by `include_set`
+# (used if we do by-year sampling)
 class sampling_tld(TaggedLineDocument):
     def __init__(self,source,include_set):
         self.source = source
