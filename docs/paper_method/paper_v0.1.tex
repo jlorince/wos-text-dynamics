@@ -1,0 +1,150 @@
+\documentclass[aps,pre,twocolumn,superscriptaddress]{revtex4-1}
+
+\usepackage{amsfonts,amssymb,amsmath,latexsym,epsfig,wasysym} 
+\usepackage[sort&compress]{natbib}
+\usepackage{color}
+\definecolor{bluecolor}{rgb}{0,0.,1.}
+\def\Blue#1{{\color{bluecolor} #1}}
+\definecolor{redcolor}{rgb}{.7,0.,0.}
+\def\Red#1{{\color{redcolor} #1}}
+
+\usepackage{bm}
+\newcommand{\pp}{\bm{p}}
+\newcommand{\qq}{\bm{q}}
+\newcommand{\PP}{\bm{P}}
+
+%\addtolength{\topmargin}{1.5cm}
+% \usepackage{dblfloatfix}
+%\baselineskip 25pt
+\usepackage[utf8]{inputenc}
+
+\begin{document}
+
+\title{Using document emebddings to quantify the semantic relation between millions of scientific papers. }
+% \title{Embedding techniques to create science maps of millions of individual publications}
+
+
+
+\author{Jared Lorince} 
+\affiliation{Northwestern Institute of Complex Systems, Northwestern University, Evanston Illinois 60208, USA}
+
+\author{Diego F.M. Oliveira} 
+\affiliation{Northwestern Institute of Complex Systems, Northwestern University, Evanston Illinois 60208, USA}
+\affiliation{Department of Chemical and Biological Engineering, Northwestern University, Evanston Illinois 60208, USA}
+
+\author{Martin Gerlach} 
+\affiliation{Department of Chemical and Biological Engineering, Northwestern University, Evanston Illinois 60208, USA}
+
+\author{Brian Uzzi}
+\affiliation{Northwestern Institute of Complex Systems, Northwestern University, Evanston Illinois 60208, USA}
+
+\begin{abstract}
+% \begin{center}\today\end{center}
+%
+Embedding techniques are a promising tool.
+Here, we show how these methods are useful.
+We apply to 22M articles of web of science.
+On the one hand we perform a systematic analsysi of the robustness of these models -- explain further: it is not just noise, and parameter settings.
+More importantly, we investigate how resulting representation in feature space recovers relations on the level of 
+i) fields, ii) journals, iii) authors, and iv) time.
+This provides a spectrum of evidence that these models open new possibilities to uncover semantic relation between individual scientific papers on a scale of millions of documents.
+We show an example of its usefulness -- not sure what exactly.
+
+
+\end{abstract} 
+
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Introduction %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\showthe\columnwidth
+\section{Introduction}
+\label{sec.intro}
+
+Knowledge contained in the form of texts.
+Availability of textual information lead to increasing interest in analysis of texts.
+However, 
+
+Due to black-box character of these methods and lack of principled evaluation mechanisms, our robustness checks add to establish these new methods as reliable.
+
+
+
+\section{Document embeddings}
+%
+How do the basics work in these techniques
+
+\section{Usefulness and Limitations of 2D-visualizations}
+%
+Give an example plot of the 2D-stuff to give qualitative impression of result - some fancy plot.
+
+Show also correlation of distances between orgiginal and projected embedding:
+Conclusion: do not trust too much!
+
+\section{Robustness Check}
+%
+Perform different robustness chekcs to see that these methods yield stable results.
+\begin{itemize}
+ \item Bootstrap/subsample the data (variation of results with repsect to perturbation from fluctuations in data)
+ \item Run the same emebdding algorithm twice: This refers to what Lancichinetti et al (PRX,2015) describe as the reproducibility -- do we get the same result when simply re-running the algorithm?
+ \item Vary the parameters of the embedding, e.g. number of dimensions or the context-window. Show that result is not dependent on a particular choice of parameter values
+\end{itemize}
+
+
+\section{Capturing Similarity / How meaningful are these models}
+%
+Our aim is to show that these models are meaningful, i.e. that they capture known semantic relations.
+We investiagte 4 different cases.
+
+We basically repeat the same analysis many times
+
+1) Difference in distribution
+\begin{itemize}
+ \item measure a global distribution of distances
+ \item measure distribution of items conditioned on their group-membership. group can be field, journal, time, author
+ \item are the conditioned distributions different than the global dsitribution? (statistical significance, effect size in difference in mean, ...)
+\end{itemize}
+
+2) Probaiblity of sharing the label - looking at it from a different angle
+\begin{itemize}
+ \item how likely are two chosen articles to belong to the same group (field, journal, author, ...)
+ \item pick two articles randomly and measure their distance
+ \item calculate the probaiblity of sharing the group-membership conditioned on the distance
+ \item ideally, we hope to see that the probability shows a decay as a function of the distance, i.e. measuring the distance allows us to make a prediction on certain properties of the papers.
+\end{itemize}
+
+3) Measuring density
+\begin{itemize}
+ \item not exaclty sure how to proceed here
+\end{itemize}
+
+\subsection{Fields}
+
+\subsection{Journals}
+
+\subsection{Authors}
+
+\subsection{Time}
+
+\section{Application}
+
+The question here is how much we want to reveal on what we can apply this thing?
+
+\acknowledgments
+We thank someone for insightful discussions.
+
+\appendix
+
+%
+% \begin{figure}[bt]
+% \centering
+% \includegraphics[width=0.99\columnwidth]{path_to_figure_and_name}
+% \caption{
+% captiontext
+% }
+% \label{fig.give_a_label}
+% \end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Appendix %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliography{references}
+
+
+\end{document}
