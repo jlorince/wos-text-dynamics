@@ -41,6 +41,7 @@
 \begin{abstract}
 % \begin{center}\today\end{center}
 %
+R
 Embedding techniques are a promising tool.
 Here, we show how these methods are useful.
 We apply to 22M articles of web of science.
@@ -59,25 +60,54 @@ We show an example of its usefulness -- not sure what exactly.
 %\showthe\columnwidth
 \section{Introduction}
 \label{sec.intro}
+%
+%%%mapping fields
+Increasing volume of science -- we need automatic organization of the semantic content of millions of articles.
+The aim is to obtain so-called maps of science~\cite{Shiffrin2004,Boyack2005,Rosvall2008}.
 
-Knowledge contained in the form of texts.
-Availability of textual information lead to increasing interest in analysis of texts.
-However, 
+%%% Analysis of texts
+While most approaches are based on the analysis of citations, the  digitization leads to a dramatic increase in the availability of the actual content or metaknowledge~\cite{Evans2011}, most importantly in the form of written text.
+The latter sparked an interest in the large-scale analysis of texts from scientific publications revealing the organization and evolution of scientific fields~\cite{Boyack2011,Chavalarias2013,Kuhn2014,Vilhena2014,Dias2017}. (Perhaps discuss individual aspects in more detail).
 
-Due to black-box character of these methods and lack of principled evaluation mechanisms, our robustness checks add to establish these new methods as reliable.
+%%% Level of individual papers - what is the problem
+While most works approach this problem on an aggregate level of, e.g., journals or (pre-defined) fields, here, we want to quantify the semantic relation relation between individual articles.
+The questions are:
+Where are new articles added in the semantic space? 
+How are new topics or regions in space populated?
+Refer to the dense region of the research frontier?
+How do people choose their research, e.g. experiments (Rzhetsky, PNAS 2015)
 
+
+%%% How do we approach it 
+Recently proposed embedding techniques based on neural networks~\cite{Goldberg2016} offer a promising tool to identify the underlying semantic structure in large collections of texts.
+In contrast to established dimensionality reduction techniques such as Latent Dirichlet Allocation~\cite{Blei2003} using the bag-of-words assumption, embedding techniques take into account the stucture of words within texts.
+This is especially promising for the largest databsase (in terms of coverage) such as Web of Science, where the textual information of an individual article is typically very sparse due to availability of only titles and abstracts.
+
+
+%% What we do
+Things we show:\\
+We can easily scale to all 20M (+) papers with abstracts in the WoS.\\
+The relation between articles captures meaningful semantic structure when measuring distances between articles form the same i) field, ii) authors, iii) journals, or iv) time.\\
+This allows us to trace how individual articles populate and explore the semantic space.
 
 
 \section{Document embeddings}
 %
+We apply so-called embedding techniques based on neural networks~\cite{Goldberg2016} which have been shown to provide a useful framework in revealing the underlying semantic structure contained in millions of documents.
+Initially developed to represent relations between words, e.g. so-called word2vec~\cite{Mikolov2013}, these concepts have been extened to obtain an embedding of documents in a low-dimensional semantic space, e.g. doc2vec~\cite{Le2014}.
+In contrast to other popular dimensionality reduction techniques such as Latent Semantic Indexing~\cite{Deerwester1990} or Latent Dirichlet Allocation~\cite{Blei2003}, which typically represent texts as bag-of-words, models based on embedding preserve (and thus take advantage of) the structure of words within individual texts.
+In fact, it was shown in Ref.~\cite{Dai2015} that this leads to better results in quanitfying the similarity of texts.
+
 How do the basics work in these techniques
 
-\section{Usefulness and Limitations of 2D-visualizations}
+\section{Qualitative illustration}
+%
+Relationship between words. Give some examples, e.g. the word entropy.
 %
 Give an example plot of the 2D-stuff to give qualitative impression of result - some fancy plot.
-
-Show also correlation of distances between orgiginal and projected embedding:
-Conclusion: do not trust too much!
+Note that this visualization only gives an approximate picture.
+In Sec.~\ref{sec.viz.2d.limit} we show the correlation between the distances between two articles in the orginal space and the projected 2D-space.
+As noted previously~\Red{CITE}, the 2D-projection only preserves local relationships between articles, i.e. larger distances are not representative of the true distance.
 
 \section{Robustness Check}
 %
@@ -124,14 +154,38 @@ We basically repeat the same analysis many times
 
 \subsection{Time}
 
-\section{Application}
+\section{Density-estimation}
+%
+We apply the document embedding to calculate how populated regions of the semantic space are.
 
-The question here is how much we want to reveal on what we can apply this thing?
+This allows us to follow how the individual papers expand the frontier of knowledge.
+
+
+\section{Discussion}
+%
+Alternative approach to finding a ``natural clustering'' (see the recent debate on how to evaluate results from different approaches~\cite{Glaser2017}) or one looks at the evolution or organization on an aggregate level of journals or fields.
+
+
 
 \acknowledgments
 We thank someone for insightful discussions.
 
 \appendix
+
+\section{Data}
+%
+We use XX millions of articles from the Web of Science from the years 1991-2015.
+We take as text the title with abstract.
+We employ the following pre-processing steps:
+\begin{itemize}
+ \item ...
+\end{itemize}
+
+\section{Limitation of 2D-projection}
+\label{sec.viz.2d.limit}
+%
+
+ADD: Figure showing the correlation between distances from original space and projected 2D space.
 
 %
 % \begin{figure}[bt]
